@@ -975,7 +975,10 @@ function contentHead(p) {
     if (le) text = bytes.subarray(0, n - (n % 2)).toString('utf16le');
     else if (be) text = Buffer.from(bytes.subarray(0, n - (n % 2))).swap16().toString('utf16le');
     else text = bytes.toString('latin1');
-    return { text: text.toLowerCase(), bytes, size: fstatSync(fd).size };
+    // Also the bytes with every NUL dropped: UTF-32 and odd byte orders still spell "<?mso-" there.
+    // A false match only reveals a file that would have opened: the safe side.
+    const loose = bytes.toString('latin1').replace(/\0/g, '').toLowerCase();
+    return { text: text.toLowerCase(), loose, bytes, size: fstatSync(fd).size };
   } catch { return null; } finally { if (fd !== undefined) try { closeSync(fd); } catch { /* already closed */ } }
 }
 
@@ -1000,7 +1003,7 @@ function contentRevealReason(p, ext) {
     return 'its content is RTF, which can embed objects that load as it opens, whatever its name says, so it is shown in its folder instead';
   }
   if (OFFICE_BY_CONTENT.has(ext)) {
-    if (head.text.includes('<?mso-')) return 'it is an Office document saved as XML, which can carry macros that run as it opens, so it is shown in its folder instead';
+    if (head.text.includes('<?mso-') || head.loose.includes('<?mso-')) return 'it is an Office document saved as XML, which can carry macros that run as it opens, so it is shown in its folder instead';
     if (ext === '.xml' && head.size > CONTENT_SCAN_MAX) return 'it is an XML file too large to check for Office content, so it is shown in its folder instead';
   }
   return null;

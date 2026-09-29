@@ -729,6 +729,16 @@ test('a UTF-16 Office XML file is found whatever characters its prolog holds (no
   const le = put(path.join(dir, 'le.xml'), Buffer.from(text, 'utf16le'));
   const be = put(path.join(dir, 'be.xml'), Buffer.from(text, 'utf16le').swap16());
   for (const f of [le, be]) assert.equal(detect(f, { platform: 'win32' }).mode, 'folder', path.basename(f));
+  // UTF-32, with and without a byte order mark, in both byte orders (audit round 4).
+  const utf32 = (s, bigEndian) => Buffer.concat([...s].map((ch) => {
+    const b = Buffer.alloc(4);
+    if (bigEndian) b.writeUInt32BE(ch.codePointAt(0)); else b.writeUInt32LE(ch.codePointAt(0));
+    return b;
+  }));
+  const body = '<?mso-application progid="Word.Document"?><w/>';
+  for (const [name, bytes] of [['u32le-bom.xml', utf32(`﻿${body}`, false)], ['u32le.xml', utf32(body, false)], ['u32be-bom.xml', utf32(`﻿${body}`, true)], ['u32be.xml', utf32(body, true)]]) {
+    assert.equal(detect(put(path.join(dir, name), bytes), { platform: 'win32' }).mode, 'folder', name);
+  }
   const quoted = put(path.join(dir, 'doctype.xml'), '<?xml version="1.0"?><!DOCTYPE w SYSTEM "a><z"><?mso-application progid="Word.Document"?><w/>');
   assert.equal(detect(quoted, { platform: 'win32' }).mode, 'folder');
   const t0 = Date.now();
