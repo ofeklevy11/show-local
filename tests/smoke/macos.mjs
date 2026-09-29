@@ -179,7 +179,7 @@ check('a .doc (can carry macros) is revealed, not opened', r.ok && r.mode === 'f
 // ---- report ------------------------------------------------------------------------------------
 
 const failed = results.filter((x) => !x.ok);
-const table = ['| Check | Result | Detail |', '|---|---|---|', ...results.map((x) => `| ${x.name} | ${x.ok ? 'PASS' : '**FAIL**'} | ${String(x.detail).replace(/\|/g, '\\|').replace(/\n/g, ' ')} |`)];
+const table = ['| Check | Result | Detail |', '|---|---|---|', ...results.map((x) => `| ${x.name} | ${x.ok ? 'PASS' : '**FAIL**'} | ${String(x.detail).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ')} |`)];
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## macOS smoke (${os.release()})\n\n${table.join('\n')}\n\n${results.length - failed.length}/${results.length} passed\n`);
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
 process.exit(failed.length ? 1 : 0);
