@@ -224,7 +224,7 @@ test('cmdPath: a plain path stays a quoted path; one with a character the Bash t
 test('cmdUrl and cmdScript: URLs stay equivalent without quote or shell characters; the script path stays a path', () => {
   assert.equal(cmdUrl('http://127.0.0.1:4400/'), "'http://127.0.0.1:4400/'");
   assert.equal(cmdUrl("http://127.0.0.1:4400/it's%20(1)!.html"), "'http://127.0.0.1:4400/it%27s%20%281%29%21.html'");
-  assert.equal(new URL(cmdUrl("http://h/it's").slice(1, -1)).pathname, new URL("http://h/it's").pathname.replace("'", '%27'));
+  assert.equal(new URL(cmdUrl("http://h/it's").slice(1, -1)).pathname, new URL("http://h/it's").pathname.replace(/'/g, '%27'));
   assert.equal(cmdScript('C:\\Program Files\\show.mjs', 'win32'), "'C:/Program Files/show.mjs'");
   assert.equal(cmdScript("/home/o'brien/show.mjs", 'linux'), "'/home/o'\\''brien/show.mjs'");
   assert.equal(toPathArg('https://example.com/'), 'https://example.com/', 'only file URLs are turned into paths');

@@ -957,10 +957,11 @@ test('a package.json over 1 MB, or a folder named package.json, is not read', ()
 
 /** detect(dir) in a child process, killed after 10 s, so a read that blocks or never ends cannot hang the tests. */
 function detectInChild(dir, platform) {
-  const code = `import(${JSON.stringify(lib('detect.mjs'))}).then((m) => process.stdout.write(JSON.stringify(m.detect(${JSON.stringify(dir)}, { platform: ${JSON.stringify(platform)} }))))`;
+  // The values travel as arguments (process.argv after -e), never inside the code.
+  const code = 'import(process.argv[1]).then((m) => process.stdout.write(JSON.stringify(m.detect(process.argv[2], { platform: process.argv[3] }))))';
   return new Promise((resolve) => {
     const t0 = Date.now();
-    const child = spawn(process.execPath, ['--input-type=module', '-e', code], { stdio: ['ignore', 'pipe', 'ignore'] });
+    const child = spawn(process.execPath, ['--input-type=module', '-e', code, lib('detect.mjs'), dir, platform], { stdio: ['ignore', 'pipe', 'ignore'] });
     let out = '';
     child.stdout.on('data', (b) => { out += b; });
     const timer = setTimeout(() => child.kill('SIGKILL'), 10000);

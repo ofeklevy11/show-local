@@ -302,10 +302,14 @@ export function buildFixtures() {
   const ff = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=0x2f7cf6:s=320x180:d=3', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', '-shortest', '-pix_fmt', 'yuv420p', f.mp4], { encoding: 'utf8' });
   if (ff.status !== 0) f.mp4 = null;
   w(path.join(f.devApp, 'package.json'), `${JSON.stringify({ name: 'e2e-dev-app', private: true, scripts: { dev: 'node server.cjs --port 5199' } }, null, 2)}\n`);
+  w(path.join(f.devApp, 'page.html'), `<!doctype html><title>${TITLES.devApp}</title><h1>dev app</h1>`);
   w(path.join(f.devApp, 'server.cjs'), [
+    "const fs = require('fs');",
     "const http = require('http');",
+    "const path = require('path');",
     "const port = Number(process.argv[process.argv.indexOf('--port') + 1]);",
-    `http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); r.end(${JSON.stringify(`<!doctype html><title>${TITLES.devApp}</title><h1>dev app</h1>`)}); })`,
+    "const page = fs.readFileSync(path.join(__dirname, 'page.html'));",
+    "http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); r.end(page); })",
     "  .listen(port, '127.0.0.1', () => console.log('dev app ready at http://localhost:' + port + '/'));",
   ].join('\n'));
   w(f.hebrew, page(TITLES.hebrew));
@@ -589,7 +593,24 @@ export function isTaskNotice(e) {
   const c = e.message?.content;
   const texts = typeof c === 'string' ? [c]
     : Array.isArray(c) && c.length && c.every((b) => b?.type === 'text') ? c.map((b) => b.text) : null;
-  return !!texts && texts.every((t) => /^\s*(?:<task-notification>[\s\S]*?<\/task-notification>\s*)+$/.test(String(t ?? '')));
+  return !!texts && texts.every((t) => onlyTaskNotifications(String(t ?? '')));
+}
+
+/** One or more <task-notification>…</task-notification> blocks and whitespace, nothing else (a linear scan). */
+function onlyTaskNotifications(text) {
+  const OPEN = '<task-notification>';
+  const CLOSE = '</task-notification>';
+  let at = 0;
+  let blocks = 0;
+  for (;;) {
+    while (at < text.length && /\s/.test(text[at])) at++;
+    if (at === text.length) return blocks > 0;
+    if (!text.startsWith(OPEN, at)) return false;
+    const end = text.indexOf(CLOSE, at + OPEN.length);
+    if (end === -1) return false;
+    at = end + CLOSE.length;
+    blocks++;
+  }
 }
 
 /**
@@ -1057,7 +1078,7 @@ export function shortEvidence(j) {
   return items.length ? tidy(items.join('; ')) : '—';
 }
 
-const cell = (s) => String(s ?? '—').replace(/\r?\n/g, ' ').replace(/\|/g, '\\|');
+const cell = (s) => String(s ?? '—').replace(/\r?\n/g, ' ').replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
 
 const ENDED = {
   itself: 'session exited by itself',
