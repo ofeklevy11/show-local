@@ -7,7 +7,7 @@
 //
 //   node tests/smoke/macos.mjs          (CI only: refuses to run unless CI=true)
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, renameSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,15 +52,31 @@ function appBundle(name, marker) {
   return app;
 }
 
-/** A Finder alias (bookmark file) at `at` that leads to `target`, made through the Foundation bridge (no Automation permission needed). */
+/**
+ * A Finder alias (a bookmark file) at `at` that leads to `target`: first through the Foundation
+ * bridge (no Automation permission needed), else through Finder itself. Returns { ok, how, why }.
+ */
 function finderAlias(target, at) {
   const js = `ObjC.import('Foundation');
-const t = $.NSURL.fileURLWithPath(${JSON.stringify(target)});
-const data = t.bookmarkDataWithOptionsIncludingResourceValuesForKeysRelativeToURLError(1 << 10, null, null, null);
-const ok = $.NSURL.writeBookmarkDataToURLOptionsError(data, $.NSURL.fileURLWithPath(${JSON.stringify(at)}), 0, null);
-ok ? 'ok' : 'failed';`;
+function run() {
+  const err = Ref();
+  const data = $.NSURL.fileURLWithPath(${JSON.stringify(target)}).bookmarkDataWithOptionsIncludingResourceValuesForKeysRelativeToURLError($.NSURLBookmarkCreationSuitableForBookmarkFile, $(), $(), err);
+  if (!data || data.isNil()) return 'no bookmark data: ' + (err[0] ? ObjC.unwrap(err[0].localizedDescription) : 'no error given');
+  const written = $.NSURL.writeBookmarkDataToURLOptionsError(data, $.NSURL.fileURLWithPath(${JSON.stringify(at)}), 0, err);
+  return written ? 'ok' : 'write failed: ' + (err[0] ? ObjC.unwrap(err[0].localizedDescription) : 'no error given');
+}`;
   const r = spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', js], { encoding: 'utf8', timeout: 20000 });
-  return r.status === 0 && r.stdout.trim() === 'ok' && existsSync(at);
+  if (r.status === 0 && r.stdout.trim() === 'ok' && existsSync(at)) return { ok: true, how: 'Foundation bookmark' };
+  const first = `${r.stdout.trim()} ${r.stderr.trim()}`.trim();
+  // Finder makes "<name> alias" next to the original; it is then renamed to `at`.
+  const made = path.join(path.dirname(target), `${path.basename(target)} alias`);
+  const as = `tell application "Finder" to make new alias file at (POSIX file ${JSON.stringify(path.dirname(target))} as alias) to (POSIX file ${JSON.stringify(target)} as alias)`;
+  const f = spawnSync('/usr/bin/osascript', ['-e', as], { encoding: 'utf8', timeout: 20000 });
+  if (f.status === 0 && existsSync(made)) {
+    renameSync(made, at);
+    return { ok: true, how: 'Finder' };
+  }
+  return { ok: false, why: `Foundation: ${first || `exit ${r.status}`}; Finder: ${`${f.stdout} ${f.stderr}`.trim() || `exit ${f.status}`}` };
 }
 
 async function appears(file, ms) {
@@ -117,11 +133,11 @@ const aliasTarget = script('alias-target.command', marker('alias'));
 const alias = path.join(work, 'report-alias.pdf');
 const controlAliasTarget = script('alias-control-target.command', marker('alias-control'));
 const controlAlias = path.join(work, 'control-alias.pdf');
-if (finderAlias(aliasTarget, alias) && finderAlias(controlAliasTarget, controlAlias)) {
+const made = [finderAlias(aliasTarget, alias), finderAlias(controlAliasTarget, controlAlias)];
+check('a Finder alias could be created for the test', made.every((m) => m.ok), made.map((m) => (m.ok ? `made through ${m.how}` : m.why)).join(' | '));
+if (made.every((m) => m.ok)) {
   await neverRuns('a Finder alias named report-alias.pdf that leads to a .command', alias, marker('alias'),
     controlAlias, marker('alias-control'), /Finder alias/);
-} else {
-  check('a Finder alias could be created for the test', false, 'the Foundation bookmark call failed');
 }
 
 const link = path.join(work, 'notes-link.pdf');

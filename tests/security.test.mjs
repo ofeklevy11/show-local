@@ -383,7 +383,8 @@ test('Windows: the 8.3 short-path lookup runs PowerShell by its full path', () =
 });
 
 test('macOS: open, osascript, plutil, ps and lsof run by their fixed system paths', async () => {
-  const runFn = fakeRun([['open', {}], ['osascript', { stdout: 'false\n' }], ['plutil', { status: 1 }], ['ps', { stdout: 'node x\n' }], ['lsof', { stdout: '' }]]);
+  // plutil answers an empty handler list (Safari), whether or not this machine has the real plist.
+  const runFn = fakeRun([['open', {}], ['osascript', { stdout: 'false\n' }], ['plutil', { stdout: '{"LSHandlers":[]}' }], ['ps', { stdout: 'node x\n' }], ['lsof', { stdout: '' }]]);
   const a = createMacAdapter({ runFn, env: {} });
   await a.openUrl('https://example.com/', { bundleId: 'com.google.Chrome', name: 'Chrome' });
   await a.openFolder('/Users/me/out', '/Users/me/out/a.pdf');
