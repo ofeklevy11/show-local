@@ -1,5 +1,6 @@
 // macOS: `open` for everything; verification through AppleScript where the system allows it.
 // Implemented from Apple's documented commands but not yet run on a real Mac (see README).
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveMacBrowser } from '../browser.mjs';
 import { MAC_PROGRAMS, normTitle, pollTitles, run, selectionUnchecked } from '../util.mjs';
@@ -26,7 +27,13 @@ const trimSlash = (p) => p.replace(/\/+$/, '') || '/';
  * .saver, .sparsebundle…) that `open` would hand to LaunchServices. With nothing to select,
  * openFolder reveals such a folder itself with `open -R`, so Finder shows its parent.
  */
-const revealsItself = (dir, select) => !select && /\.[A-Za-z0-9]+$/.test(trimSlash(dir));
+const hasDot = (p) => /\.[A-Za-z0-9]+$/.test(trimSlash(p));
+const revealsItself = (dir, select) => {
+  if (select) return false;
+  if (hasDot(dir)) return true;
+  // A link with a plain name can lead to a package: `open` follows it, so judge what it leads to.
+  try { return hasDot(realpathSync(dir)); } catch { return false; }
+};
 
 /** Why an osascript run gave no answer: not installed, no answer in time, or its own error. */
 function osaFailure(r) {

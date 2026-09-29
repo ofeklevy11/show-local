@@ -320,6 +320,17 @@ function relativeParts(ref, platform) {
   return parts;
 }
 
+// Folders where macOS and Linux mount network shares on first access.
+const AUTOMOUNT = /^\/(?:net|Network|automount|misc|smb|nfs)(?:\/|$)/;
+
+/** file is at most MAX_SITE_LEVELS folders above dir's level (the farthest a site root is looked for). */
+function withinSiteReach(dir, file) {
+  const rel = path.relative(dir, file).split(/[\\/]+/);
+  let up = 0;
+  while (rel[up] === '..') up++;
+  return up <= MAX_SITE_LEVELS && !path.isAbsolute(path.relative(dir, file));
+}
+
 /** The address a library call requests, when it is a relative path ("data/x.csv", "part.html"). */
 function dataCalls(js) {
   const out = [];
@@ -357,6 +368,9 @@ function dataNames({ code, values }, { dir, platform, seen, budget }) {
     if (seen.has(name)) continue;
     if (budget.left-- <= 0) break;
     const file = path.resolve(dir, ...parts);
+    // A ref that climbs past where a site root could be, or into an automounted network folder
+    // (/net and friends on macOS and Linux), is not looked at: a stat there can reach another machine.
+    if (!withinSiteReach(dir, file) || (platform !== 'win32' && AUTOMOUNT.test(file))) continue;
     try {
       if (platform === 'win32' && networkLinkOn(file)) continue;
       if (statSync(file).isFile()) add(name);
@@ -906,19 +920,61 @@ function isFinderAlias(p, flagsFn = finderFlags) {
 }
 
 /**
- * An Office document saved as XML (Word 2003 XML, Flat OPC): the `<?mso-application?>` line
- * that makes Office's XML handler hand it to Word, Excel or PowerPoint, which can then find
- * macros in it. Checked in the first 4 KB, in UTF-8 or UTF-16.
+ * Where the root element of an XML text starts: the first "<" that is not a processing
+ * instruction, a comment or the DOCTYPE (with its internal subset). -1 while the text read so
+ * far ends inside the prolog. A linear scan with indexOf: no pattern can backtrack on it.
+ */
+function rootElementAt(text) {
+  // Where the construct that starts at `from` ends (just past `close`), or -1 when it does not end yet.
+  const past = (close, from) => { const at = text.indexOf(close, from); return at === -1 ? -1 : at + close.length; };
+  let i = 0;
+  for (;;) {
+    const lt = text.indexOf('<', i);
+    if (lt === -1 || lt + 1 >= text.length) return -1;
+    let end;
+    if (text[lt + 1] === '?') end = past('?>', lt + 2);
+    else if (text.startsWith('<!--', lt)) end = past('-->', lt + 4);
+    else if (text[lt + 1] === '!') {
+      const gt = text.indexOf('>', lt);
+      const open = text.indexOf('[', lt);
+      if (open !== -1 && (gt === -1 || open < gt)) {
+        const close = text.indexOf(']', open);
+        end = close === -1 ? -1 : past('>', close);
+      } else end = gt === -1 ? -1 : gt + 1;
+    } else return lt;
+    if (end === -1) return -1; // the construct is not closed yet: read more
+    i = end;
+  }
+}
+
+/** How much of an .xml file's prolog is read for an Office processing instruction. */
+const XML_PROLOG_MAX = 1024 * 1024;
+
+/**
+ * An Office document saved as XML (Word 2003 XML, Flat OPC): an `<?mso-application?>` line in
+ * its prolog makes Office's XML handler hand it to Word, Excel or PowerPoint, which can then
+ * find macros in it. The prolog is read up to its root element, in UTF-8 or UTF-16; one that
+ * does not end within XML_PROLOG_MAX counts as Office too, since it cannot be ruled out.
  */
 function isOfficeXml(p) {
+  let fd;
   try {
-    const fd = openSync(p, 'r');
-    try {
-      const b = Buffer.alloc(4096);
-      const n = readSync(fd, b, 0, b.length, 0);
-      return b.subarray(0, n).toString('latin1').replace(/\0/g, '').toLowerCase().includes('<?mso-application');
-    } finally { closeSync(fd); }
-  } catch { return false; }
+    fd = openSync(p, 'r');
+    const chunk = Buffer.alloc(65536);
+    let text = '';
+    let pos = 0;
+    while (pos < XML_PROLOG_MAX) {
+      const n = readSync(fd, chunk, 0, chunk.length, pos);
+      if (n <= 0) break;
+      pos += n;
+      text += chunk.subarray(0, n).toString('latin1').replace(/\0/g, '').toLowerCase();
+      const pi = text.indexOf('<?mso-');
+      const root = rootElementAt(text);
+      if (pi !== -1 && (root === -1 || pi < root)) return true;
+      if (root !== -1) return false;
+    }
+    return pos >= XML_PROLOG_MAX;
+  } catch { return false; } finally { if (fd !== undefined) try { closeSync(fd); } catch { /* already closed */ } }
 }
 
 // Said of a type that is not on the list, which is all that is known about it: never that a

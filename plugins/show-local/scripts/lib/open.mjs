@@ -63,6 +63,7 @@ const REPLACEMENT_CHAR = String.fromCharCode(0xfffd);
 /** How much of a watcher's reason, and of a host name from a redirect, reaches the result (see outputText). */
 const REASON_MAX = 600;
 const HOST_MAX = 80;
+const WHERE_MAX = 200;
 /** A path segment longer than this makes a remote address "not plain": it is never fetched. */
 export const PLAIN_SEGMENT_MAX = 32;
 
@@ -196,7 +197,7 @@ async function followRedirects(url, { left, fetchFn }) {
     const r = await fetchFn(current.href, { timeoutMs: Math.max(300, Math.min(1500, left())), ...(publicOnly ? { publicOnly } : {}) });
     const at = { finalUrl: current.href, hops, ...(isLocalHost(current.hostname) ? {} : { remote: true }) };
     if (r?.error === NOT_PUBLIC && led) {
-      return { ...led, why: `it redirected to ${outputText(current.host, HOST_MAX)}, which leads to ${r.address || 'an address'} on this computer or a private network; show-local fetches such an address only when it is a local host by name (localhost, 127.x.x.x, [::1]) that it was given, or that such a host redirected to`, final: true, notPublic: true };
+      return { ...led, why: `it redirected to ${outputText(current.host, HOST_MAX)}, which leads to ${outputText(r.address || 'an address', HOST_MAX)} on this computer or a private network; show-local fetches such an address only when it is a local host by name (localhost, 127.x.x.x, [::1]) that it was given, or that such a host redirected to`, final: true, notPublic: true };
     }
     if (!r?.ok) return { ok: false, error: r?.error || 'no answer', ...at };
     const answer = { ok: true, status: r.status, body: r.body, headers: r.headers, ...at };
@@ -205,7 +206,7 @@ async function followRedirects(url, { left, fetchFn }) {
     if (hops >= MAX_HTTP_REDIRECTS) return { ...answer, why: `it redirected more than ${MAX_HTTP_REDIRECTS} times` };
     let next;
     try { next = new URL(Array.isArray(loc) ? loc[0] : loc, current); } catch { return { ...answer, why: 'it redirected to an address that is not a URL' }; }
-    if (!/^https?:$/.test(next.protocol)) return { ...answer, why: `it redirected to a ${next.protocol} address` };
+    if (!/^https?:$/.test(next.protocol)) return { ...answer, why: `it redirected to a ${outputText(next.protocol, 40)} address` };
     if (!isLocalHost(next.hostname)) {
       const why = unfetchableReason(next);
       if (why) return { ...answer, why: `it redirected to ${outputText(next.host, HOST_MAX)}, which is not fetched because ${why}`, final: true };
@@ -402,7 +403,7 @@ async function remoteTitle(url, { fetchFn, budgetMs }) {
     if (left <= 0) return { why: `fetching it took longer than ${budgetMs} ms` };
     const r = await fetchFn(current.href, { timeoutMs: left, publicOnly: true });
     if (r?.error === NOT_PUBLIC) {
-      const where = `${outputText(current.host, HOST_MAX)} leads to ${r.address || 'an address'} on this computer or a private network, and show-local fetches only public addresses for a title`;
+      const where = `${outputText(current.host, HOST_MAX)} leads to ${outputText(r.address || 'an address', HOST_MAX)} on this computer or a private network, and show-local fetches only public addresses for a title`;
       return { why: hop ? `it redirected to an address that is not fetched: ${where}` : `it was not fetched: ${where}` };
     }
     if (!r?.ok) return { why: `fetching it failed (${outputText(r?.error || 'no answer', 60)})` };
@@ -514,7 +515,8 @@ async function openInBrowser(url, { adapter, timing, waitMs, logFile, verify, ex
     if (isLocalHost(u.hostname)) {
       const up = await waitForHttp(url, waitMs, { alive: serverAlive, fetchFn });
       const final = new URL(up.finalUrl || url);
-      const where = final.origin === u.origin ? `${final.pathname}${final.search}` : final.href;
+      // Where the redirects ended: a remote site's redirect can make it long, so it is cut (the url field stays whole).
+      const where = outputText(final.origin === u.origin ? `${final.pathname}${final.search}` : final.href, WHERE_MAX);
       const via = up.hops ? ` after ${plural(up.hops, 'redirect')}, at ${where}` : '';
       if (!up.ok && up.final) {
         // The server answered, with a redirect show-local must not follow: to a remote address
@@ -551,7 +553,7 @@ async function openInBrowser(url, { adapter, timing, waitMs, logFile, verify, ex
         const got = await remoteTitle(url, { fetchFn, budgetMs: REMOTE_TITLE_MS });
         if (got.title) {
           tokens.push(got.title);
-          evidence.push(`HTTP ${got.status} from ${got.host}`);
+          evidence.push(`HTTP ${got.status} from ${outputText(got.host, HOST_MAX)}`);
           notes.push(`remote page fetched once before opening, for its title "${outputText(got.title)}" (a plain address: no query, fragment or token)`);
         } else {
           noTitle = `the page title could not be learned before opening: ${got.why}, so no window can be recognised as this page`;
