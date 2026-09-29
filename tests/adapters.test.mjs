@@ -12,7 +12,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { SCRIPTS, fakeRun, freePort, lib, tempDir } from './helpers.mjs';
+import { SCRIPTS, fakeRun, freePort, lib, programName, tempDir } from './helpers.mjs';
 
 const { createWindowsAdapter, spawnDetached } = await import(lib('adapters/win.mjs'));
 const { createMacAdapter } = await import(lib('adapters/mac.mjs'));
@@ -65,7 +65,7 @@ const seq = (items) => { let i = 0; return () => items[Math.min(i++, items.lengt
 function fakeSpawn(behaviour = 'spawn') {
   const calls = [];
   const fn = (cmd, args, opts) => {
-    const call = { cmd, args, opts, unrefed: false };
+    const call = { cmd: programName(cmd), path: cmd, args, opts, unrefed: false };
     calls.push(call);
     const b = typeof behaviour === 'function' ? behaviour(cmd, args, opts, calls.length - 1) : behaviour;
     if (b === 'throw') throw new Error('spawn EINVAL (fake)');
@@ -92,7 +92,7 @@ function fakeWatcherSpawn(drive = () => {}) {
     child.stderr = new EventEmitter();
     child.killed = false;
     child.kill = () => { child.killed = true; };
-    calls.push({ cmd, args, opts, child });
+    calls.push({ cmd: programName(cmd), path: cmd, args, opts, child });
     setImmediate(() => drive(child));
     return child;
   };

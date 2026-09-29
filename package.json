@@ -1,6 +1,6 @@
 {
   "name": "show-local",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Claude Code plugin: open results in your real browser, file manager or app, and verify they opened.",
   "private": true,
   "type": "module",

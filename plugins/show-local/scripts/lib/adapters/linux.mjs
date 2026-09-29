@@ -8,7 +8,7 @@ import { desktopArgs, resolveLinuxBrowser } from '../browser.mjs';
 import { normTitle, pollTitles, run, selectionUnchecked } from '../util.mjs';
 import { spawnDetached } from './win.mjs';
 
-const has = (runFn, bin) => runFn('sh', ['-c', 'command -v "$0"', bin]).status === 0;
+const has = (runFn, bin) => runFn('/bin/sh', ['-c', 'command -v "$0"', bin]).status === 0;
 const settled = (result) => ({ ready: Promise.resolve(), result: Promise.resolve(result), cancel() {} });
 
 /**

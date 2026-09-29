@@ -1,0 +1,8 @@
+# The workflow's actions are pinned to commit SHAs; Dependabot proposes the new SHA (and the
+# version comment next to it) when an action releases. The plugin has no npm dependencies.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

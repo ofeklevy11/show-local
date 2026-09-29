@@ -1,7 +1,7 @@
 // The 8.3 short spelling of a long Windows path ("C:\Users\me\AppData\Local\Temp\SL-FSO~1\…"),
 // so a page too deep for file:/// (past MAX_PATH) still opens as a file instead of being served.
 import { statSync } from 'node:fs';
-import { run } from './util.mjs';
+import { run, winProgram } from './util.mjs';
 
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command'];
 
@@ -48,7 +48,7 @@ export function shortPath(p, { runFn = run, platform = process.platform, statFn 
   const kind = st.isDirectory() ? 'folder' : 'file';
   let r;
   try {
-    r = runFn('powershell.exe', [...PS, SHORT_PATH_SCRIPT], { env: { SHOW_LOCAL_P: long, SHOW_LOCAL_KIND: kind }, timeout });
+    r = runFn(winProgram('powershell'), [...PS, SHORT_PATH_SCRIPT], { env: { SHOW_LOCAL_P: long, SHOW_LOCAL_KIND: kind }, timeout });
   } catch { return null; }
   if (!r || r.status !== 0) return null;
   const out = String(r.stdout ?? '').replace(/^\uFEFF/, '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean).pop();

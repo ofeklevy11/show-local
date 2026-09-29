@@ -19,7 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processInfo } from './portowner.mjs';
 import { entryAt, pidAlive, unregister } from './registry.mjs';
-import { run, sleep } from './util.mjs';
+import { run, sleep, systemRoot } from './util.mjs';
 
 export const DEVRUN_FILE = fileURLToPath(import.meta.url);
 /** How often a server, dev-run or the guard checks that its parent still runs. */
@@ -30,7 +30,7 @@ export const RUNNERS = new Set(['npm', 'pnpm', 'yarn', 'bun']);
 
 /** A program in Windows' own System32 folder, by absolute path: never one planted in a working folder. */
 export function system32(name, env = process.env) {
-  return path.win32.join(env.SystemRoot || env.windir || 'C:\\Windows', 'System32', name);
+  return path.win32.join(systemRoot(env), 'System32', name);
 }
 
 /**

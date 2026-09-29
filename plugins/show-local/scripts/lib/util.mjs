@@ -1,7 +1,9 @@
 // Small shared helpers. Built-in modules only: the plugin has no dependencies.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import dns from 'node:dns';
 import { chmodSync, lstatSync, mkdirSync, mkdtempSync } from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -9,6 +11,42 @@ import https from 'node:https';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The Windows folder, as an absolute drive path (%SystemRoot%, else %windir%, else C:\Windows).
+ * A relative or network value is ignored: it would name a folder that is not Windows' own.
+ */
+export function systemRoot(env = process.env) {
+  for (const v of [env.SystemRoot, env.windir]) {
+    if (typeof v === 'string' && /^[A-Za-z]:\\/.test(v)) return v.replace(/\\+$/, '');
+  }
+  return 'C:\\Windows';
+}
+
+const WINDOWS_PROGRAMS = {
+  cmd: ['System32', 'cmd.exe'],
+  explorer: ['explorer.exe'],
+  netstat: ['System32', 'netstat.exe'],
+  powershell: ['System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'],
+  reg: ['System32', 'reg.exe'],
+  taskkill: ['System32', 'taskkill.exe'],
+};
+
+/**
+ * A Windows program show-local starts, by its full path in the Windows folder. Windows looks
+ * for a bare "powershell.exe" in the working folder before PATH, so a file of that name
+ * planted in the project being shown would run instead.
+ */
+export function winProgram(name, env = process.env) {
+  const rel = WINDOWS_PROGRAMS[name];
+  if (!rel) throw new Error(`unknown Windows program "${name}"`);
+  return path.win32.join(systemRoot(env), ...rel);
+}
+
+/** The macOS programs show-local starts, at the fixed paths System Integrity Protection guards. */
+export const MAC_PROGRAMS = Object.freeze({
+  lsof: '/usr/sbin/lsof', open: '/usr/bin/open', osascript: '/usr/bin/osascript', plutil: '/usr/bin/plutil', ps: '/bin/ps', xattr: '/usr/bin/xattr',
+});
 
 /** Run a program synchronously with an argument array (never a shell string). */
 export function run(cmd, args = [], opts = {}) {
@@ -152,6 +190,28 @@ export function titleFromHtml(html) {
 
 export const normTitle = (s) => String(s ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
 
+/** How many characters of a page's or a window's title reach show-local's output. */
+export const TITLE_MAX = 120;
+// Line breaks and control characters become spaces. Invisible format characters go: the
+// bidirectional overrides and isolates that reorder text, zero-width characters, the Unicode
+// tag block (U+E0000–U+E007F, invisible copies of ASCII) and variation selectors, all of which
+// can carry text a reader does not see.
+const BREAKS = /[\p{Cc}\p{Zl}\p{Zp}]/gu;
+const INVISIBLE = /[\p{Cf}\u{FE00}-\u{FE0F}\u{E0100}-\u{E01EF}]/gu;
+
+/**
+ * Text that someone else wrote (a page's title, a window's title, a process name, an access
+ * log line) as it may appear in show-local's output, which Claude reads: control and invisible
+ * characters removed, whitespace collapsed, at most `max` characters (the last one then "…").
+ * Whoever made the page chose that text, so it stays short and plain; the skills tell Claude it
+ * is data from the page, never instructions. Matching windows still uses the full title.
+ */
+export function outputText(s, max = TITLE_MAX) {
+  const clean = String(s ?? '').replace(BREAKS, ' ').replace(INVISIBLE, '').replace(/\s+/g, ' ').trim();
+  const chars = [...clean];
+  return chars.length > max ? `${chars.slice(0, max - 1).join('').trimEnd()}…` : clean;
+}
+
 /**
  * Watch a list of window titles (macOS and Linux; Windows has windows.ps1) for the target.
  * `source()` returns { titles } or { titles: null, reason } when titles cannot be read, and
@@ -226,20 +286,133 @@ const loopbackLookup = (hostname, opts, cb) => {
   else done(null, '127.0.0.1', 4);
 };
 
+/**
+ * A host the user's own machine serves, by its spelling alone: localhost, *.localhost, a
+ * 127.x.x.x or [::1] literal, 0.0.0.0. These are the addresses show-local polls for a local
+ * server. Whether any other name leads to this machine is only known once it is resolved
+ * (see isPublicAddress and publicLookup).
+ */
 export const isLocalHost = (hostname) => {
   const h = String(hostname).replace(/^\[|\]$/g, '').toLowerCase();
   return h === 'localhost' || h === '::1' || h === '0.0.0.0' || h.endsWith('.localhost')
     || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h);
 };
 
+// Addresses that are not on the public internet (the IANA special-purpose registries): this
+// computer, the local network, link-local (169.254.169.254 is a cloud's metadata service),
+// carrier-grade NAT, and the reserved, documentation, benchmarking and multicast ranges.
+const NOT_PUBLIC_V4 = [
+  ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
+  ['192.0.0.0', 24], ['192.0.2.0', 24], ['192.88.99.0', 24], ['192.168.0.0', 16], ['198.18.0.0', 15],
+  ['198.51.100.0', 24], ['203.0.113.0', 24], ['224.0.0.0', 4], ['240.0.0.0', 4],
+];
+const NOT_PUBLIC_V6 = [
+  ['::', 96], // unspecified, loopback (::1) and the old IPv4-compatible form
+  ['::ffff:0:0:0', 96], // IPv4-translated
+  ['64:ff9b:1::', 48], // local-use NAT64
+  ['100::', 64], // discard-only
+  ['2001::', 23], // IETF protocol assignments (Teredo, benchmarking, ORCHID)
+  ['2001:db8::', 32], ['3fff::', 20], // documentation
+  ['fc00::', 7], // unique local: IPv6's private networks
+  ['fe80::', 10], ['fec0::', 10], // link-local, and the old site-local
+  ['ff00::', 8], // multicast
+];
+const notPublicV4 = new net.BlockList();
+for (const [a, bits] of NOT_PUBLIC_V4) notPublicV4.addSubnet(a, bits, 'ipv4');
+const notPublicV6 = new net.BlockList();
+for (const [a, bits] of NOT_PUBLIC_V6) notPublicV6.addSubnet(a, bits, 'ipv6');
+
+/** The eight 16-bit groups of a valid IPv6 address (zone id dropped, an embedded IPv4 read). */
+function ipv6Groups(ip) {
+  let s = ip.toLowerCase().split('%')[0];
+  const quad = /(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(s);
+  if (quad) {
+    const [a, b, c, d] = quad.slice(1).map(Number);
+    s = `${s.slice(0, quad.index)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+  }
+  const [head, tail] = s.split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail === undefined ? null : tail ? tail.split(':') : [];
+  const groups = t === null ? h : [...h, ...Array(8 - h.length - t.length).fill('0'), ...t];
+  return groups.map((g) => parseInt(g, 16));
+}
+
+const ipv4Of = (hi, lo) => `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`;
+
+/**
+ * Is this IP address on the public internet? False for this computer, the local network,
+ * link-local and every other special-purpose range; for an IPv6 address that carries an IPv4
+ * address (IPv4-mapped ::ffff:a.b.c.d, which Node writes [::ffff:7f00:1]; NAT64 64:ff9b::/96;
+ * 6to4 2002::/16), the IPv4 address decides. False for anything that is not an IP address.
+ */
+export function isPublicAddress(ip) {
+  const addr = String(ip ?? '').replace(/^\[|\]$/g, '');
+  const kind = net.isIP(addr);
+  if (kind === 4) return !notPublicV4.check(addr, 'ipv4');
+  if (kind !== 6) return false;
+  const g = ipv6Groups(addr);
+  if (g.length !== 8 || !g.every((x) => Number.isInteger(x) && x >= 0 && x <= 0xffff)) return false;
+  if (g.slice(0, 5).every((x) => x === 0) && g[5] === 0xffff) return isPublicAddress(ipv4Of(g[6], g[7]));
+  if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) return isPublicAddress(ipv4Of(g[6], g[7]));
+  if (g[0] === 0x2002) return isPublicAddress(ipv4Of(g[1], g[2]));
+  return !notPublicV6.check(g.map((x) => x.toString(16)).join(':'), 'ipv6');
+}
+
+/** The error code of a request show-local refused because its address is not public. */
+export const NOT_PUBLIC = 'ENOTPUBLIC';
+
+const notPublicError = (host, address) => Object.assign(
+  new Error(`${host} leads to ${address}, which is on this computer or a private network`),
+  { code: NOT_PUBLIC, address },
+);
+
+/**
+ * A `lookup` for sockets that must reach only public addresses: it resolves the name as usual
+ * and fails with NOT_PUBLIC when any address it got is not public. It runs where the socket
+ * connects, on the very answer it connects to, so a name that changes its answer between two
+ * lookups (DNS rebinding) cannot slip past a check made earlier. Handles `all: true`, which
+ * Node 20+ asks for when it tries IPv4 and IPv6 side by side. `lookupFn` exists for tests.
+ */
+export function publicLookup(hostname, options, callback, lookupFn = dns.lookup) {
+  const done = typeof options === 'function' ? options : callback;
+  const opts = typeof options === 'number' ? { family: options } : options && typeof options === 'object' ? options : {};
+  lookupFn(hostname, opts, (err, address, family) => {
+    if (err) { done(err); return; }
+    const list = Array.isArray(address) ? address : [{ address, family }];
+    const bad = list.find((a) => !isPublicAddress(a?.address));
+    if (bad) { done(notPublicError(hostname, bad?.address)); return; }
+    if (Array.isArray(address)) done(null, address);
+    else done(null, address, family);
+  });
+}
+
+/**
+ * Why a URL's host is refused before anything is resolved, for a request that must reach only
+ * public addresses: a local host by its spelling (see isLocalHost), or an IP literal that is not
+ * public. Node never calls `lookup` for an IP literal, so this is the only check it gets.
+ */
+function notPublicHost(u) {
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  if (isLocalHost(host)) return notPublicError(u.host, host);
+  if (net.isIP(host) && !isPublicAddress(host)) return notPublicError(u.host, host);
+  return null;
+}
+
 /**
  * Request options for a parsed URL. A local https dev server (vite --https, next dev
  * --experimental-https, mkcert) presents a certificate Node does not trust, and this request
  * only asks whether the server is up; the browser makes its own TLS decision. So loopback
  * skips certificate checks, and every other host keeps Node's full verification.
+ * `publicOnly`: the socket may connect only to a public address (publicLookup), on a connection
+ * of its own (`agent: false`: never a pooled socket, never a proxy).
  */
-export function requestOptions(u, { method = 'GET', timeoutMs = 3000 } = {}) {
+export function requestOptions(u, { method = 'GET', timeoutMs = 3000, publicOnly = false, lookupFn } = {}) {
   const options = { method, timeout: timeoutMs, headers: { 'user-agent': USER_AGENT, accept: PAGE_ACCEPT } };
+  if (publicOnly) {
+    options.lookup = (host, opts, cb) => publicLookup(host, opts, cb, lookupFn);
+    options.agent = false;
+    return options;
+  }
   if (u.hostname.toLowerCase().endsWith('.localhost')) options.lookup = loopbackLookup;
   if (u.protocol === 'https:' && isLocalHost(u.hostname)) options.rejectUnauthorized = false;
   return options;
@@ -248,16 +421,22 @@ export function requestOptions(u, { method = 'GET', timeoutMs = 3000 } = {}) {
 /**
  * GET/HEAD with an overall deadline (not just an idle timeout), http or https, no
  * dependencies. Reads at most `maxBytes` of the body. Resolves, never rejects.
+ * `publicOnly`: refuse, with error NOT_PUBLIC and the `address`, to connect anywhere but a
+ * public address (checked on IP literals first, then on every address the name resolves to).
  */
-export function httpRequest(url, { method = 'GET', timeoutMs = 3000, maxBytes = 262144 } = {}) {
+export function httpRequest(url, { method = 'GET', timeoutMs = 3000, maxBytes = 262144, publicOnly = false, lookupFn } = {}) {
   return new Promise((resolve) => {
     let u;
     try { u = new URL(url); } catch { resolve({ ok: false, error: 'bad-url' }); return; }
     const lib = u.protocol === 'https:' ? https : u.protocol === 'http:' ? http : null;
     if (!lib) { resolve({ ok: false, error: 'unsupported-protocol' }); return; }
+    if (publicOnly) {
+      const refused = notPublicHost(u);
+      if (refused) { resolve({ ok: false, error: NOT_PUBLIC, address: refused.address }); return; }
+    }
     let settled = false;
     const finish = (v) => { if (!settled) { settled = true; clearTimeout(deadline); resolve(v); } };
-    const options = requestOptions(u, { method, timeoutMs });
+    const options = requestOptions(u, { method, timeoutMs, publicOnly, lookupFn });
     let req;
     try {
       req = lib.request(u, options, (res) => {
@@ -275,7 +454,7 @@ export function httpRequest(url, { method = 'GET', timeoutMs = 3000, maxBytes = 
     } catch (e) { resolve({ ok: false, error: e.code || e.message }); return; }
     const deadline = setTimeout(() => { req.destroy(); finish({ ok: false, error: 'timeout' }); }, timeoutMs);
     req.on('timeout', () => { req.destroy(); finish({ ok: false, error: 'timeout' }); });
-    req.on('error', (e) => finish({ ok: false, error: e.code || e.message }));
+    req.on('error', (e) => finish({ ok: false, error: e.code || e.message, ...(e.code === NOT_PUBLIC ? { address: e.address } : {}) }));
     req.end();
   });
 }

@@ -3,7 +3,7 @@
 // Every lookup degrades to null (or []) when the OS tool is missing; callers treat that as unknown.
 import { readFileSync, readlinkSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { run, splitWindowsCommand } from './util.mjs';
+import { MAC_PROGRAMS, run, splitWindowsCommand, winProgram } from './util.mjs';
 
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command'];
 
@@ -18,7 +18,7 @@ export function listeningPids(port, { runFn = run, platform = process.platform }
   const add = (n) => { if (Number.isInteger(n) && n > 0 && !pids.includes(n)) pids.push(n); };
   if (platform === 'win32') {
     // No "-p TCP": that lists IPv4 only, and dev servers bound to localhost often listen on [::1] alone.
-    const r = runFn('netstat', ['-ano']);
+    const r = runFn(winProgram('netstat'), ['-ano']);
     if (r.status !== 0) return [];
     for (const line of String(r.stdout).split(/\r?\n/)) {
       // Proto, local, remote, [state: zero or more words], pid.
@@ -29,7 +29,7 @@ export function listeningPids(port, { runFn = run, platform = process.platform }
     }
     return pids;
   }
-  const lsof = runFn('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t']);
+  const lsof = runFn(platform === 'darwin' ? MAC_PROGRAMS.lsof : 'lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t']);
   if (lsof.status === 0) for (const t of String(lsof.stdout).split(/\s+/)) if (/^\d+$/.test(t)) add(Number(t));
   if (!pids.length && platform === 'linux') {
     const ss = runFn('ss', ['-ltnpH', `sport = :${port}`]);
@@ -81,7 +81,7 @@ export function windowsArgv(commandLine, exe) {
 export function processInfo(pid, { runFn = run, platform = process.platform, readFile = readFileSync, readLink = readlinkSync, depth = 4 } = {}) {
   if (!Number.isInteger(pid) || pid <= 0) return null;
   if (platform === 'win32') {
-    const r = runFn('powershell.exe', [...PS, WINDOWS_CHAIN], { env: { SHOW_LOCAL_PID: String(pid), SHOW_LOCAL_DEPTH: String(Math.max(1, Math.min(16, Math.trunc(depth) || 4))) }, timeout: 15000 });
+    const r = runFn(winProgram('powershell'), [...PS, WINDOWS_CHAIN], { env: { SHOW_LOCAL_PID: String(pid), SHOW_LOCAL_DEPTH: String(Math.max(1, Math.min(16, Math.trunc(depth) || 4))) }, timeout: 15000 });
     if (r.status !== 0) return null;
     const line = String(r.stdout).replace(/^\uFEFF/, '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l.startsWith('[') || l.startsWith('{')).pop();
     let list;
@@ -109,9 +109,11 @@ export function processInfo(pid, { runFn = run, platform = process.platform, rea
     try { name = String(readFile(`/proc/${pid}/comm`, 'utf8')).trim() || null; } catch { /* not ours to read */ }
     return { pid, name: name || baseName(argv?.[0]), exe: null, argv, commandLine: argv?.length ? argv.join(' ') : null, cwd, parents: [] };
   }
-  const ps = runFn('ps', ['-o', 'command=', '-p', String(pid)]);
-  const comm = runFn('ps', ['-o', 'comm=', '-p', String(pid)]);
-  const cwdOut = runFn('lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn']);
+  // macOS (and the BSDs, which take this branch too): SIP-guarded paths on macOS.
+  const psBin = platform === 'darwin' ? MAC_PROGRAMS.ps : 'ps';
+  const ps = runFn(psBin, ['-o', 'command=', '-p', String(pid)]);
+  const comm = runFn(psBin, ['-o', 'comm=', '-p', String(pid)]);
+  const cwdOut = runFn(platform === 'darwin' ? MAC_PROGRAMS.lsof : 'lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn']);
   const cwd = (String(cwdOut.stdout).split('\n').find((l) => l.startsWith('n')) || '').slice(1) || null;
   const commandLine = String(ps.stdout).trim() || null;
   // `ps` joins argv with spaces, so a path with a space splits: it then simply names nothing.

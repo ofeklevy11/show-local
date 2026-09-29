@@ -1,6 +1,6 @@
 {
   "name": "show-local",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Opens what Claude made on your own computer, not inside Claude: pages and HTML reports in your real default browser, local sites through a loopback server, folders in your file manager, and other files in their own apps. Then it checks that the window actually came up before saying so.",
   "author": {
     "name": "Ofek Levy",

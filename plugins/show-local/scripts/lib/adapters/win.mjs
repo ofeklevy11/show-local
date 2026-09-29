@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { browserArgs, resolveWindowsBrowser, windowsAppFor } from '../browser.mjs';
-import { run, sha1, stateDir } from '../util.mjs';
+import { run, sha1, stateDir, winProgram } from '../util.mjs';
 
 const WATCHER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../win/windows.ps1');
 const PS_ARGS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
@@ -58,7 +58,7 @@ function watch(env, timeoutMs, spawnFn = spawn) {
     let out = '';
     let err = '';
     try {
-      child = spawnFn('powershell.exe', [...PS_ARGS, '-File', WATCHER], {
+      child = spawnFn(winProgram('powershell'), [...PS_ARGS, '-File', WATCHER], {
         env: { ...process.env, SHOW_LOCAL_TIMEOUT: String(timeoutMs), SHOW_LOCAL_DLL: helperDll(), ...env },
         windowsHide: true,
       });
@@ -99,7 +99,7 @@ export function createWindowsAdapter({ runFn = run, spawnFn = spawn } = {}) {
         if (r.ok) return { ok: true, with: browser.name, how: `${path.basename(browser.exe)} (default https browser)`, exe: browser.exe };
       }
       // Fallback: let the shell pick the handler for the URL. The URL travels in an env var.
-      const r = runFn('powershell.exe', [...PS_ARGS, '-Command', 'Start-Process -FilePath $env:SHOW_LOCAL_TARGET'], { env: { SHOW_LOCAL_TARGET: url } });
+      const r = runFn(winProgram('powershell'), [...PS_ARGS, '-Command', 'Start-Process -FilePath $env:SHOW_LOCAL_TARGET'], { env: { SHOW_LOCAL_TARGET: url } });
       return r.status === 0
         ? { ok: true, with: 'default handler', how: 'Start-Process (browser could not be resolved from the registry)' }
         : { ok: false, error: (r.stderr || r.error || 'Start-Process failed').trim() };
@@ -108,12 +108,12 @@ export function createWindowsAdapter({ runFn = run, spawnFn = spawn } = {}) {
     async openFolder(dir, select) {
       // Windows paths cannot contain double quotes, so quoting here cannot be broken out of.
       const arg = select ? `/select,"${select}"` : `"${dir}"`;
-      const r = await spawnDetached('explorer.exe', [arg], { windowsVerbatimArguments: true }, spawnFn);
+      const r = await spawnDetached(winProgram('explorer'), [arg], { windowsVerbatimArguments: true }, spawnFn);
       return r.ok ? { ok: true, with: 'File Explorer', how: select ? 'explorer /select' : 'explorer' } : r;
     },
 
     async openApp(file, app = this.appFor(file)) {
-      const r = runFn('powershell.exe', [...PS_ARGS, '-Command', 'Invoke-Item -LiteralPath $env:SHOW_LOCAL_TARGET'], { env: { SHOW_LOCAL_TARGET: file } });
+      const r = runFn(winProgram('powershell'), [...PS_ARGS, '-Command', 'Invoke-Item -LiteralPath $env:SHOW_LOCAL_TARGET'], { env: { SHOW_LOCAL_TARGET: file } });
       return r.status === 0
         ? { ok: true, with: app?.name || 'default app', how: 'Invoke-Item (file association)' }
         : { ok: false, error: (r.stderr || r.error || 'Invoke-Item failed').trim() };
@@ -145,7 +145,7 @@ export function createWindowsAdapter({ runFn = run, spawnFn = spawn } = {}) {
     },
 
     snapshot() {
-      const r = runFn('powershell.exe', [...PS_ARGS, '-File', WATCHER], { env: { SHOW_LOCAL_MODE: 'snapshot', SHOW_LOCAL_DLL: helperDll() }, timeout: 20000 });
+      const r = runFn(winProgram('powershell'), [...PS_ARGS, '-File', WATCHER], { env: { SHOW_LOCAL_MODE: 'snapshot', SHOW_LOCAL_DLL: helperDll() }, timeout: 20000 });
       const line = r.stdout.split(/\r?\n/).filter((l) => l.trim().startsWith('{')).pop();
       try { return JSON.parse(line); } catch { return { ok: false, error: (r.stderr || r.error || 'no output').trim() }; }
     },

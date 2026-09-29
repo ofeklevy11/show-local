@@ -8,7 +8,9 @@ import { claimedPorts, pickPort, rememberedPorts } from './ports.mjs';
 import { devRunAt, devRunLive, entryAt, findServerFor, isDevRun, kindOf, logFileFor, pidAlive, register } from './registry.mjs';
 import { logHits } from './server.mjs';
 import { belongsTo, listeningPids, processInfo } from './portowner.mjs';
-import { cmdPath, cmdScript, cmdUrl, httpRequest, isLocalHost, isNetworkPath, pathKey, sleep, slugFor, titleFromHtml } from './util.mjs';
+import {
+  cmdPath, cmdScript, cmdUrl, httpRequest, isLocalHost, isNetworkPath, NOT_PUBLIC, outputText, pathKey, sleep, slugFor, titleFromHtml,
+} from './util.mjs';
 import { createWindowsAdapter } from './adapters/win.mjs';
 import { createMacAdapter } from './adapters/mac.mjs';
 import { createLinuxAdapter } from './adapters/linux.mjs';
@@ -173,13 +175,26 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
  * fetched because of unfetchableReason), or { ok: false, error, finalUrl, hops } when an
  * address did not answer. `remote: true` says the last address asked was not local.
  * `left()` is the time that remains for the whole wait.
+ *
+ * Only the address show-local was given, and redirects that stay on local hosts, may reach this
+ * computer. An address that is not a local host by its spelling (isLocalHost) is fetched
+ * public-only, and so is everything after it: a remote site cannot send show-local on to this
+ * computer or the local network, not by a name that resolves there, not by an IPv4-mapped IPv6
+ * literal, not by a redirect back to localhost. Such a redirect is not followed (`final`, as
+ * for a one-time link), and the page opens anyway.
  */
 async function followRedirects(url, { left, fetchFn }) {
   let current = new URL(url);
   let hops = 0;
+  let publicOnly = false;
+  let led = null; // the redirect answer that led to `current`
   for (;;) {
-    const r = await fetchFn(current.href, { timeoutMs: Math.max(300, Math.min(1500, left())) });
+    if (!isLocalHost(current.hostname)) publicOnly = true;
+    const r = await fetchFn(current.href, { timeoutMs: Math.max(300, Math.min(1500, left())), ...(publicOnly ? { publicOnly } : {}) });
     const at = { finalUrl: current.href, hops, ...(isLocalHost(current.hostname) ? {} : { remote: true }) };
+    if (r?.error === NOT_PUBLIC && led) {
+      return { ...led, why: `it redirected to ${current.host}, which leads to ${r.address || 'an address'} on this computer or a private network; show-local fetches such an address only when it was given that address, or a local host it was given redirected to it`, final: true, notPublic: true };
+    }
     if (!r?.ok) return { ok: false, error: r?.error || 'no answer', ...at };
     const answer = { ok: true, status: r.status, body: r.body, headers: r.headers, ...at };
     const loc = r.headers?.location;
@@ -192,6 +207,7 @@ async function followRedirects(url, { left, fetchFn }) {
       const why = unfetchableReason(next);
       if (why) return { ...answer, why: `it redirected to ${next.host}, which is not fetched because ${why}`, final: true };
     }
+    led = answer;
     current = next;
     hops += 1;
   }
@@ -224,7 +240,7 @@ export async function waitForHttp(url, waitMs = DEFAULT_WAIT_MS, { anyStatus = f
   const shape = (r, ok) => ({
     ok, status: r?.status ?? null, finalUrl: r?.finalUrl ?? url, hops: r?.hops ?? 0,
     ...(ok ? { body: r.body, headers: r.headers } : {
-      error: r?.error ?? null, ...(r?.why ? { why: r.why } : {}), ...(r?.final ? { final: true } : {}), ...(r?.remote ? { remote: true } : {}),
+      error: r?.error ?? null, ...(r?.why ? { why: r.why } : {}), ...(r?.final ? { final: true } : {}), ...(r?.notPublic ? { notPublic: true } : {}), ...(r?.remote ? { remote: true } : {}),
     }),
     ms: Date.now() - start,
   });
@@ -371,7 +387,9 @@ export function unfetchableReason(url) {
 /**
  * The title of a plain remote page, fetched once before it opens: { title, status, host }, or
  * { why } when there is none to be had. Redirects are followed only to other plain remote
- * addresses, and everything together stays within `budgetMs`.
+ * addresses, and everything together stays within `budgetMs`. Every request is public-only
+ * (httpRequest): nothing reaches this computer or the local network, whatever the name, the
+ * literal or the redirect says, and such a page opens with no title learned.
  */
 async function remoteTitle(url, { fetchFn, budgetMs }) {
   const start = Date.now();
@@ -379,7 +397,11 @@ async function remoteTitle(url, { fetchFn, budgetMs }) {
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const left = budgetMs - (Date.now() - start);
     if (left <= 0) return { why: `fetching it took longer than ${budgetMs} ms` };
-    const r = await fetchFn(current.href, { timeoutMs: left });
+    const r = await fetchFn(current.href, { timeoutMs: left, publicOnly: true });
+    if (r?.error === NOT_PUBLIC) {
+      const where = `${current.host} leads to ${r.address || 'an address'} on this computer or a private network, and show-local fetches only public addresses for a title`;
+      return { why: hop ? `it redirected to an address that is not fetched: ${where}` : `it was not fetched: ${where}` };
+    }
     if (!r?.ok) return { why: `fetching it failed (${r?.error || 'no answer'})` };
     const loc = r.headers?.location;
     if (r.status >= 300 && r.status < 400 && loc) {
@@ -416,13 +438,21 @@ const isProof = (r) => r?.matched === true && r.confidence === 'high';
 const describe = (r, { withReason = true } = {}) => {
   if (!isProof(r)) {
     const why = r.reason || (r.matched === true ? 'the window watcher reported a match without confidence, which is not proof' : 'the window watcher gave no reason');
-    return r.title ? `${why} (window "${r.title}")` : why;
+    return r.title ? `${why} (window "${outputText(r.title)}")` : why;
   }
-  if (r.title) return `window "${r.title}"${r.process ? ` (${r.process})` : ''}`;
+  if (r.title) return `window "${outputText(r.title)}"${r.process ? ` (${outputText(r.process, 60)})` : ''}`;
   const sel = r.selected?.length ? `, selected: ${r.selected.map((s) => path.basename(s)).join(', ')}` : '';
   const reused = r.reusedWindow ? ' (a window already on this folder, which now has the file selected)' : '';
   return `file manager window on ${r.path}${sel}${reused}${withReason && r.reason ? ` — ${r.reason}` : ''}`;
 };
+
+/**
+ * A watcher result as it appears in show-local's output: its title and process name are the
+ * page's or the app's own text, so they pass through outputText (matching used the full text).
+ */
+const forOutput = (r) => (r && typeof r === 'object'
+  ? { ...r, ...(r.title != null ? { title: outputText(r.title) } : {}), ...(r.process != null ? { process: outputText(r.process, 60) } : {}) }
+  : r);
 
 /**
  * Whether the file the folder open asked to select is selected: true or false as the watcher
@@ -473,16 +503,19 @@ async function openInBrowser(url, { adapter, timing, waitMs, logFile, verify, ex
 
   if (u.protocol === 'http:' || u.protocol === 'https:') {
     if (isLocalHost(u.hostname)) {
-      const up = await waitForHttp(url, waitMs, { alive: serverAlive });
+      const up = await waitForHttp(url, waitMs, { alive: serverAlive, fetchFn });
       const final = new URL(up.finalUrl || url);
       const where = final.origin === u.origin ? `${final.pathname}${final.search}` : final.href;
       const via = up.hops ? ` after ${plural(up.hops, 'redirect')}, at ${where}` : '';
       if (!up.ok && up.final) {
-        // The server answered, with a redirect to a remote address that must not be fetched (a
-        // hosted sign-in carries one-time state). The browser follows it; show-local does not,
-        // so the page opens with no title to recognise it by.
+        // The server answered, with a redirect show-local must not follow: to a remote address
+        // that could be a one-time link (a hosted sign-in carries one-time state), or on to this
+        // computer or a private network after leaving the local host. The browser follows it;
+        // show-local does not, so the page opens with no title to recognise it by.
         evidence.push(`HTTP ${up.status} from ${u.host}${via}`);
-        notes.push(`the remote address the page redirects to was not fetched before opening: ${up.why}; a fetch could spend a one-time link`);
+        notes.push(up.notPublic
+          ? `the address the page redirects to was not fetched before opening: ${up.why}`
+          : `the remote address the page redirects to was not fetched before opening: ${up.why}; a fetch could spend a one-time link`);
         noTitle = `the page title is not known: ${up.why}, so no window can be recognised as this page`;
       } else if (!up.ok) {
         // A server answering with an error (a base path answers "/" with 404) or a redirect it
@@ -510,7 +543,7 @@ async function openInBrowser(url, { adapter, timing, waitMs, logFile, verify, ex
         if (got.title) {
           tokens.push(got.title);
           evidence.push(`HTTP ${got.status} from ${got.host}`);
-          notes.push(`remote page fetched once before opening, for its title "${got.title}" (a plain address: no query, fragment or token)`);
+          notes.push(`remote page fetched once before opening, for its title "${outputText(got.title)}" (a plain address: no query, fragment or token)`);
         } else {
           noTitle = `the page title could not be learned before opening: ${got.why}, so no window can be recognised as this page`;
         }
@@ -547,9 +580,9 @@ async function openInBrowser(url, { adapter, timing, waitMs, logFile, verify, ex
     ? { ...seen, matched: null, reason: `${seen.reason || 'no window showed the page title'}; the page redirected when show-local fetched it without the browser's cookies, so the browser may show another page, and a missing window is not proof that it did not open` }
     : seen;
   evidence.push(describe(win));
-  if (logFile) evidence.push(hit ? `server log: ${hit.line}` : 'server log: no GET of this page from the browser after opening');
+  if (logFile) evidence.push(hit ? `server log: ${outputText(hit.line, 300)}` : 'server log: no GET of this page from the browser after opening');
   const v = verdict(win, hit);
-  return { ...base, ok: true, opened: true, openedWith: opened.with, how: opened.how, browser: used, ...v, evidence, ...(notes.length ? { notes } : {}), window: win, ms: Date.now() - t0 };
+  return { ...base, ok: true, opened: true, openedWith: opened.with, how: opened.how, browser: used, ...v, evidence, ...(notes.length ? { notes } : {}), window: forOutput(win), ms: Date.now() - t0 };
 }
 
 /** The address of a static server's entry page. */
@@ -684,7 +717,8 @@ function recordDevServer(result, devRoot, { cwd, platform, lookup }) {
  * opts: { cwd, desktop, timeoutMs, waitMs, logFile, select, verify, planOnly, asFolder, devRoot,
  *         headless, budgetMs, t0, adapter, platform, runFn, env, isFree, fetchFn, detectFn,
  *         shortPathFn, serverAlive }
- * fetchFn (tests): stands in for httpRequest when a plain remote page is fetched for its title.
+ * fetchFn (tests): stands in for httpRequest in the requests made before opening: a local
+ *   server's readiness check (and the redirects it follows) and a plain remote page's title.
  * detectFn (tests): stands in for detect.
  * shortPathFn (tests): stands in for lib/shortpath.mjs's 8.3 lookup, in detect and for a folder.
  * env (default process.env): read for SHOW_LOCAL_TIMEOUT_MS and for isHeadless.
@@ -853,7 +887,7 @@ async function showTarget(target, opts) {
       : [describe(win)];
     return {
       ...base, ok: true, opened: true, openedWith: opened.with, how: opened.how, folder: dir, select: sel || null,
-      ...(sel ? { selected } : {}), ...verdict(win, null), evidence, ...extra, window: win, ms: Date.now() - t0,
+      ...(sel ? { selected } : {}), ...verdict(win, null), evidence, ...extra, window: forOutput(win), ms: Date.now() - t0,
     };
   }
 
@@ -868,5 +902,5 @@ async function showTarget(target, opts) {
   const opened = await adapter.openApp(d.openPath || d.path, app);
   if (!opened.ok) { watcher?.cancel?.(); return { ...base, ok: false, opened: false, error: 'open-failed', detail: opened.error, ms: Date.now() - t0 }; }
   const win = watcher ? await settleWatch(watcher, timing, watchMs, readyAt) : { matched: null, reason: 'verification skipped (--no-verify)' };
-  return { ...base, ok: true, opened: true, openedWith: opened.with, how: opened.how, ...verdict(win, null), evidence: [describe(win)], window: win, ms: Date.now() - t0 };
+  return { ...base, ok: true, opened: true, openedWith: opened.with, how: opened.how, ...verdict(win, null), evidence: [describe(win)], window: forOutput(win), ms: Date.now() - t0 };
 }

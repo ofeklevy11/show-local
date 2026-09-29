@@ -37,7 +37,7 @@ Open a **new session** and the plugin is active.
 
 **Requirements:** Node 18 or newer, reachable as `node` (check with `node --version`). The native Claude Code installer does not install Node, so you may need to install it yourself from [nodejs.org](https://nodejs.org). Without it nothing in the plugin runs, not even `show-doctor`. There are no other dependencies.
 
-**Tested on:** Windows 11, end to end through Claude Code itself, with real windows ([release report](RELEASE-REPORT.html), in Hebrew, or [view it rendered](https://htmlpreview.github.io/?https://github.com/ofeklevy11/show-local/blob/main/RELEASE-REPORT.html)). On macOS and Linux the code is implemented and covered by unit tests (Linux also in a container), but not yet on a real machine with a display.
+**Tested on:** Windows 11, end to end through Claude Code itself, with real windows ([release report](RELEASE-REPORT.html), in Hebrew, or [view it rendered](https://htmlpreview.github.io/?https://github.com/ofeklevy11/show-local/blob/main/RELEASE-REPORT.html)). **macOS and Linux are beta.** Their code is covered by unit tests, and every change runs the basic scenarios on GitHub's macOS and Ubuntu machines: on macOS with the real `open` and Finder (an HTML page, a PDF, a folder with its main file selected, and a `.command` script, an `.app`, a Finder alias and a link named `.pdf` that must be revealed and never run, each next to a control that shows the same file does run when opened directly); on Ubuntu, what reaches `xdg-open`. They have not yet been used day to day on a Mac or a Linux desktop, so reports are welcome.
 
 ## Use
 
@@ -77,13 +77,13 @@ Claude Code then lists a personal `show-local` next to the plugin's `show-local:
 
 | What there is to show | What happens |
 |---|---|
-| An http/https address | Opens in your default browser. A plain address has its page title read first, for the check; an address that could be a one-time link is never fetched |
+| An http/https address | Opens in your default browser. A plain address has its page title read first, for the check; an address that could be a one-time link is never fetched, and neither is one that leads to this computer or your local network |
 | An HTML file | Opens in that same browser, even if `.html` files are associated with another program. On Windows, a path too long for `file:///` (past about 256 characters) opens through its 8.3 short name, so the link keeps working after the session. Only when Windows has no short name for it is it served instead, and then the link works only while the session is open |
 | HTML that needs a server (ES modules, `fetch`, JSON or another local data file, in the page or in the local scripts it loads), or a folder with `index.html` | A local server on `127.0.0.1` (the first free port from 4400), then the browser |
 | A project with `npm run dev` | The project's own dev server (a local https one with a self-signed certificate works too), then the browser. It is started only when you want the site running |
 | A folder of outputs | Your file manager (Explorer, Finder or the Linux file manager), with the main file selected |
-| A PDF or other document, an image, a video, audio, text | Its default app |
-| A program, script, shortcut, a file of unknown type or with no extension, a macOS `.app` | Shown selected in your file manager. It is never run |
+| A PDF or other document (`.docx`, `.xlsx`, `.pptx`, `.epub`, `.xps`), an image, a video, audio, text | Its default app |
+| A program, script, shortcut, a file of unknown type or with no extension, a macOS `.app`, a document that can carry macros (`.doc`, `.xls`, `.ppt`, macro-enabled Office files, OpenDocument, `.rtf`) | Shown selected in your file manager. It is never run |
 
 **On Linux**, pages and HTML files open with the default browser's own command: the `Exec` line of its `.desktop` file, the one `xdg-settings` names. Folders open through the file manager's D-Bus interface, `org.freedesktop.FileManager1` (called with `gdbus`), which can select the main file. `xdg-open` is the fallback for both, and it opens everything else. So an HTML file lands in your browser even when `.html` is associated with another program.
 
@@ -105,6 +105,8 @@ The check waits up to 5 seconds for the window. On a slow machine, set the envir
 - **Linux:** anything when neither `wmctrl` nor `xdotool` is installed, and under Wayland anything that show-local's static server does not serve (a dev server's page included).
 
 A remote page is never fetched before it opens if its address could be a one-time link (sign-in, password reset, invitation): an address with a user name or password, a query string (`?…`) or a fragment (`#…`), or with a path segment that is long or looks like a token. The fetch would use such a link up. Its title is then unknown, so on every system the reply says the open cannot be confirmed. A plain address, such as `https://example.com/docs`, is requested once before opening, only to read its title for the window check. That request comes from show-local, not from your browser, so it carries none of your cookies or sign-ins. If it yields no title (an error, a file rather than a page, a redirect to an address that could be a one-time link), the reply says the open cannot be confirmed. The same goes for a local page, such as a dev server's, that redirects to an address that could be a one-time link (an outside sign-in service's page): the page opens, that address is not fetched, and the reply says the open cannot be confirmed.
+
+These requests never reach this computer or your local network on a remote site's word. The check is made on the address a name actually resolves to, as the connection is made, so a remote address or a redirect from one that leads to a loopback, private, link-local or cloud-metadata address (`127.0.0.1` under any name, `[::ffff:127.0.0.1]`, `192.168.x.x`, `10.x.x.x`, `169.254.169.254`) is not fetched. The page still opens, and the reply says the open cannot be confirmed. A title read from a page or a window reaches Claude cut to 120 characters, without control or invisible characters, and the skills tell Claude it is text from the page, never instructions.
 
 **Known limitation:** a page that reloads itself (live reload, a refresh tag, polling) and is already open in a tab can put its own `GET` in the server log. Then the server-log proof may come from that tab, not from the one just opened.
 
@@ -154,7 +156,10 @@ node show.mjs doctor                                # environment check
 - It serves only the chosen folder. A backslash counts as a path separator, like `/`. Then `..` (also encoded, such as `%2e%2e`), drive letters, alternate data streams and symlinks that lead outside the folder are refused, and so are dotfiles such as `.env` and `.git`, also through their Windows short names (`ENV~1`).
 - It never lists a folder's contents.
 - The `Host` header must name this machine, which blocks DNS rebinding.
-- It never runs what it shows: only known viewable types open in their app, and everything else is revealed in its folder. `--select` must name a file inside the folder.
+- It never runs what it shows: only known viewable types open in their app, and everything else is revealed in its folder, including documents that can carry macros (`.doc`, `.xls`, `.ppt`, `.rtf`, OpenDocument, macro-enabled Office files), a link or a Finder alias that leads to something else, and a macOS package. `--select` must name a file inside the folder.
+- Its own requests (the title of a remote page, the readiness check of a local one) never reach this computer or your local network on a remote site's word: the address a name resolves to is checked as the connection is made.
+- Windows programs it starts (PowerShell, `reg`, `netstat`, Explorer, `cmd.exe`, `taskkill`) run by their full path in the Windows folder, and macOS ones by their fixed system path, so a file with the same name in the project folder never runs instead.
+- Page and window titles reach Claude cut to 120 characters, without control or invisible characters, and the skills tell Claude they are data, never instructions.
 - When a port is taken by a process it cannot tie to your project, it reports only that process's pid and name, never its command line, which can hold secrets.
 - Programs that show-local starts itself get paths and URLs as separate arguments or environment variables, never through a shell. The one fixed command line is `dev-run` on Windows, where `npm`, `pnpm` and `yarn` are `.cmd` scripts that only `cmd.exe` runs: it runs `<runner> run dev` there with the project folder as its working folder, so no path is part of it. The follow-up commands it prints for Claude (`next.start`, `next.then`, `next.oneshot`) are shell strings for Claude's Bash tool, with every path in POSIX single quotes. In PowerShell they must be re-quoted: single quotes, with any apostrophe doubled.
 - The plugin changes no settings: not your default browser, not file associations, not browser settings. It only opens.

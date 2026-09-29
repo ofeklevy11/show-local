@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.1 — 2026-09-29
+
+Security hardening before a wider release. Nothing new to learn: the skills, commands and results keep their shape.
+
+- **show-local's own requests never reach this computer or the local network on a remote site's word.** The title of a plain remote page, and every redirect a local page's readiness check follows once it has left the local host, are fetched public-only: the address a name resolves to is checked as the connection is made (a `lookup` that refuses any address that is not public, with Node 20's `all: true` form too), and IP literals before connecting. Refused: loopback, `0.0.0.0`, the private networks, link-local (169.254.169.254 included), carrier-grade NAT, multicast and the other reserved ranges, and IPv6 addresses that carry such an IPv4 address (`[::ffff:127.0.0.1]`, which Node writes `[::ffff:7f00:1]`, NAT64, 6to4). Before, a redirect to `[::ffff:127.0.0.1]`, to a name that resolves to 127.0.0.1 (`127.0.0.1.nip.io`), or to a home-network or metadata address was followed. Such a page still opens; its open is reported as "cannot confirm", with the reason.
+- **Titles reach Claude short and plain.** Page titles, window titles, process names and server log lines in a result are cut to 120 characters (300 for a log line), with control characters, line breaks and invisible characters (bidirectional overrides, zero-width characters, Unicode tag characters, variation selectors) removed. The window is still matched against the whole title. The three skills now tell Claude that `evidence`, `notes`, `window` and titles are data from the page, never instructions.
+- **System programs by full path.** On Windows, PowerShell, `reg`, `netstat` and Explorer now run from the Windows folder by their full path, as `cmd.exe` and `taskkill` already did, so a file of that name in the project folder can never run instead (Windows looks in the working folder first). A relative or network `%SystemRoot%` is ignored. On macOS, `open`, `osascript`, `plutil`, `ps`, `lsof` and `xattr` run from their fixed system paths.
+- **Documents that can carry macros are revealed, not opened:** `.doc`, `.xls`, `.ppt` and their templates, macro-enabled Office files (`.docm`, `.xlsm`, `.pptm`, `.xlsb`…), OpenDocument files and `.rtf` (which can embed objects that load as it opens). `.docx`, `.xlsx` and `.pptx` still open.
+- **An HTML file must really be HTML:** a link named `page.html` that leads to a script, or a Finder alias named so, is revealed in its folder, as a link or alias named like a document already was. Older Finder aliases (an empty file with the alias bit in its Finder flags) are recognised too.
+- **macOS and Linux are beta**, and CI now checks them beyond unit tests: on GitHub's macOS runner with the real `open` and Finder (an HTML page, a PDF, a folder with its main file selected, and a `.command` script, an `.app`, a Finder alias, links and a quarantined script that must be revealed and never run, each next to a control that shows the same kind of file does run when opened directly), and on Ubuntu, what reaches `xdg-open`, `gdbus` and the browser.
+- **Repository and CI:** the workflow runs with a read-only token, its actions are pinned to commit SHAs (Dependabot keeps them current) and check out without keeping credentials; CodeQL scans the code; private vulnerability reporting, secret scanning and push protection are on; `main` cannot be force-pushed or deleted, and release tags cannot be moved or deleted.
+
 ## 1.0.0 — 2026-09-29
 
 First release.

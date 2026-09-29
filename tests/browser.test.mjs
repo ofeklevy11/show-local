@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fakeRun, lib, tempDir } from './helpers.mjs';
+import { fakeRun, lib, programName, tempDir } from './helpers.mjs';
 
 const B = await import(lib('browser.mjs'));
 const U = await import(lib('util.mjs'));
@@ -302,8 +302,8 @@ const resolveWin = (runFn, exists = () => true) => B.resolveWindowsBrowser(runFn
 function withUnicodeFallback(reg, template, opts) {
   const regRun = fakeRegistry(reg, opts);
   const fn = (cmd, args = [], o = {}) => {
-    if (cmd === 'powershell.exe') {
-      regRun.calls.push({ cmd, args, opts: o });
+    if (programName(cmd) === 'powershell.exe') {
+      regRun.calls.push({ cmd: programName(cmd), path: cmd, args, opts: o });
       return template == null ? { status: 1, stdout: '', stderr: 'not found', error: null } : { status: 0, stdout: `${template}\r\n`, stderr: '', error: null };
     }
     return regRun(cmd, args, o);
@@ -360,7 +360,10 @@ test('resolveWindowsBrowser: Chrome via https UserChoice + HKCR command (English
     args: ['--single-argument', '%1'], name: 'Google Chrome', process: 'chrome',
   });
   // The first query is the https UserChoice ProgId, asked by value name.
-  assert.deepEqual(runFn.calls[0], { cmd: 'reg', args: ['query', URL_CHOICE('https'), '/v', 'ProgId'], opts: {} });
+  const { path: ran, ...first } = runFn.calls[0];
+  assert.deepEqual(first, { cmd: 'reg', args: ['query', URL_CHOICE('https'), '/v', 'ProgId'], opts: {} });
+  // reg.exe by its full path in the Windows folder, never a bare "reg" (util.mjs winProgram).
+  assert.match(ran, /^[A-Za-z]:\\.+\\System32\\reg\.exe$/i);
   // The command is read as the key's default value (/ve).
   assert.deepEqual(runFn.calls[1].args, ['query', HKCR_CMD('ChromeHTML'), '/ve']);
   assert.ok(runFn.calls.every((c) => c.cmd === 'reg'));

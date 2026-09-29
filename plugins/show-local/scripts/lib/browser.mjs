@@ -3,7 +3,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { run, splitWindowsCommand } from './util.mjs';
+import { MAC_PROGRAMS, run, splitWindowsCommand, winProgram } from './util.mjs';
 
 /** Turn a registry "shell\open\command" template into {exe, args}; %1 marks the URL. */
 export function parseWindowsTemplate(template) {
@@ -31,7 +31,7 @@ export function browserArgs(parsed, url) {
 }
 
 const regValue = (runFn, key, value) => {
-  const r = runFn('reg', ['query', key, ...(value ? ['/v', value] : ['/ve'])]);
+  const r = runFn(winProgram('reg'), ['query', key, ...(value ? ['/v', value] : ['/ve'])]);
   if (r.status !== 0) return null;
   // The default value's label is localised ("(Default)", "(ברירת מחדל)"), so match on the type column.
   const m = r.stdout.match(value ? new RegExp(`${value}\\s+REG_\\w+\\s+(.+)`) : /^\s*\S.*?\s{2,}REG_\w+\s+(.+)$/m);
@@ -141,7 +141,7 @@ export function windowsCommandUnicode(runFn, progId) {
     '  if ($v) { $v; break }',
     '}',
   ].join('\n');
-  const r = runFn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], { env: { SHOW_LOCAL_PROGID: progId } });
+  const r = runFn(winProgram('powershell'), ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], { env: { SHOW_LOCAL_PROGID: progId } });
   const v = r.status === 0 ? r.stdout.trim() : '';
   return v || null;
 }
@@ -166,7 +166,7 @@ export function resolveMacBrowser(runFn = run, home = os.homedir(), exists = exi
   const plist = path.join(home, 'Library/Preferences/com.apple.LaunchServices/com.apple.launchservices.secure.plist');
   let data = { LSHandlers: [] };
   if (exists(plist)) {
-    const r = runFn('plutil', ['-convert', 'json', '-o', '-', plist]);
+    const r = runFn(MAC_PROGRAMS.plutil, ['-convert', 'json', '-o', '-', plist]);
     if (r.status !== 0) return null;
     try { data = JSON.parse(r.stdout); } catch { return null; }
   }

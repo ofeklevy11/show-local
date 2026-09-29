@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+# Read-only token: the jobs only check out and test.
+permissions:
+  contents: read
+
 jobs:
   unit:
     strategy:
@@ -12,12 +16,45 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node: [18, 22]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
       - name: Unit tests (no windows are opened)
         run: npm test
       - name: CLI smoke test
         run: node plugins/show-local/scripts/show.mjs plan README.md
+
+  # The basic scenarios on a real macOS desktop session, with the real `open` and Finder: an HTML
+  # page, a PDF, a folder with a file selected, and a .command script, an .app, a Finder alias and
+  # links that must be revealed and never run, each next to a control that does run.
+  smoke-macos:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: macOS smoke (opens real windows on the runner)
+        run: node tests/smoke/macos.mjs
+
+  # What show-local hands to xdg-open, gdbus and the browser on Linux, recorded by stand-ins.
+  smoke-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Linux smoke
+        run: node tests/smoke/linux.mjs

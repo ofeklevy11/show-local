@@ -2,7 +2,7 @@
 // Implemented from Apple's documented commands but not yet run on a real Mac (see README).
 import path from 'node:path';
 import { resolveMacBrowser } from '../browser.mjs';
-import { normTitle, pollTitles, run, selectionUnchecked } from '../util.mjs';
+import { MAC_PROGRAMS, normTitle, pollTitles, run, selectionUnchecked } from '../util.mjs';
 
 // Browsers whose AppleScript dictionary exposes tab titles, and the property that holds them.
 const TAB_TITLE = {
@@ -14,7 +14,7 @@ const TAB_TITLE = {
 const SAFE_ID = /^[A-Za-z0-9.-]+$/;
 
 function osa(runFn, lines) {
-  return runFn('osascript', lines.flatMap((l) => ['-e', l]), { timeout: 4000 });
+  return runFn(MAC_PROGRAMS.osascript, lines.flatMap((l) => ['-e', l]), { timeout: 4000 });
 }
 
 const notAuthorized = (r) => /-1743|not authori[sz]ed/i.test(`${r.stderr} ${r.stdout}`);
@@ -101,16 +101,16 @@ export function createMacAdapter({ runFn = run, env = process.env } = {}) {
 
     async openUrl(url, b) {
       const args = b?.bundleId && SAFE_ID.test(b.bundleId) ? ['-b', b.bundleId, url] : [url];
-      const r = runFn('open', args);
+      const r = runFn(MAC_PROGRAMS.open, args);
       return r.status === 0 ? { ok: true, with: b?.name || 'default browser', how: args[0] === '-b' ? 'open -b' : 'open' } : { ok: false, error: (r.stderr || r.error || 'open failed').trim() };
     },
     async openFolder(dir, select) {
       const reveal = select || (revealsItself(dir, select) ? dir : null);
-      const r = runFn('open', reveal ? ['-R', reveal] : [dir]);
+      const r = runFn(MAC_PROGRAMS.open, reveal ? ['-R', reveal] : [dir]);
       return r.status === 0 ? { ok: true, with: 'Finder', how: reveal ? 'open -R' : 'open' } : { ok: false, error: (r.stderr || r.error || 'open failed').trim() };
     },
     async openApp(file) {
-      const r = runFn('open', [file]);
+      const r = runFn(MAC_PROGRAMS.open, [file]);
       return r.status === 0 ? { ok: true, with: 'default app', how: 'open' } : { ok: false, error: (r.stderr || r.error || 'open failed').trim() };
     },
     appFor() { return null; },

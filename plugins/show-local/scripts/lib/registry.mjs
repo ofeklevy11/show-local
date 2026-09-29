@@ -12,7 +12,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { httpRequest, pathKey, stateDir } from './util.mjs';
+import { httpRequest, MAC_PROGRAMS, pathKey, stateDir } from './util.mjs';
 import { rootTag } from './server.mjs';
 import { listeningPids } from './portowner.mjs';
 
@@ -77,7 +77,7 @@ function isZombie(pid, { platform, readFile, psFn }) {
 }
 
 function psState(pid) {
-  const r = spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8', timeout: 3000 });
+  const r = spawnSync(process.platform === 'darwin' ? MAC_PROGRAMS.ps : 'ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8', timeout: 3000 });
   return r.status === 0 ? String(r.stdout).trim() : '';
 }
 

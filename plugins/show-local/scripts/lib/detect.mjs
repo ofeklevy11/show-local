@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { shortPath as shortPathOf } from './shortpath.mjs';
-import { titleFromHtml } from './util.mjs';
+import { MAC_PROGRAMS, run, titleFromHtml } from './util.mjs';
 
 export const HTML_EXT = new Set(['.html', '.htm', '.xhtml']);
 
@@ -49,7 +49,18 @@ export const VIEWABLE_EXT = new Set([
   ...VIDEO_EXT,
   ...AUDIO_EXT,
   '.txt', '.md', '.csv', '.tsv', '.json', '.xml', '.log', '.srt', '.vtt',
-  '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp', '.rtf', '.epub', '.xps',
+  '.docx', '.xlsx', '.pptx', '.epub', '.xps',
+]);
+
+// Documents that can carry macros (the old binary Office formats, the macro-enabled Office
+// formats, OpenDocument), and RTF, which can embed objects that Office loads as the file opens.
+// Office and LibreOffice block macros by default; show-local does not rely on that, and shows
+// these in their folder instead. The macro-free .docx, .xlsx and .pptx still open.
+export const MACRO_EXT = new Set([
+  '.doc', '.dot', '.docm', '.dotm', '.xls', '.xlt', '.xla', '.xlsm', '.xltm', '.xlsb', '.xlam',
+  '.ppt', '.pot', '.pps', '.ppa', '.pptm', '.potm', '.ppsm', '.ppam', '.sldm',
+  '.odt', '.ott', '.ods', '.ots', '.odp', '.otp', '.odg', '.otg', '.odb', '.fodt', '.fods', '.fodp', '.fodg',
+  '.rtf',
 ]);
 
 /** The characters cmd.exe treats specially even inside quotes (or that end a quoted argument). */
@@ -859,16 +870,35 @@ const extOf = (p) => {
   return ext === '.' ? '' : ext;
 };
 
-/** A Finder alias file: `open` follows it to its original, which may be an app. */
-function isFinderAlias(p) {
+/**
+ * The Finder flags of a file (the com.apple.FinderInfo attribute, read by /usr/bin/xattr), or
+ * null when it has none or they cannot be read. macOS only.
+ */
+export function finderFlags(p, runFn = run) {
+  const r = runFn(MAC_PROGRAMS.xattr, ['-px', 'com.apple.FinderInfo', p], { timeout: 3000 });
+  if (r.status !== 0) return null;
+  const hex = String(r.stdout).replace(/[^0-9a-f]/gi, '');
+  return hex.length >= 20 ? parseInt(hex.slice(16, 20), 16) : null;
+}
+const IS_ALIAS = 0x8000; // kIsAlias in the Finder flags
+
+/**
+ * A Finder alias file: `open` follows it to its original, which may be an app. A modern alias
+ * is bookmark data ("book" … "mark") in the file itself; an older one keeps its data in the
+ * resource fork, with an empty file, and is known by the alias bit of its Finder flags, which
+ * modern aliases carry too.
+ */
+function isFinderAlias(p, flagsFn = finderFlags) {
   try {
     const fd = openSync(p, 'r');
     try {
       const b = Buffer.alloc(16);
       const n = readSync(fd, b, 0, b.length, 0);
-      return n >= 12 && b.toString('latin1', 0, 4) === 'book' && b.toString('latin1', 8, 12) === 'mark';
+      if (n >= 12 && b.toString('latin1', 0, 4) === 'book' && b.toString('latin1', 8, 12) === 'mark') return true;
     } finally { closeSync(fd); }
-  } catch { return false; }
+  } catch { /* unreadable: the flags still say */ }
+  const flags = flagsFn(p);
+  return flags !== null && (flags & IS_ALIAS) !== 0;
 }
 
 // Said of a type that is not on the list, which is all that is known about it: never that a
@@ -876,8 +906,9 @@ function isFinderAlias(p) {
 const NOT_LISTED = "not on show-local's list of types it opens directly (documents, images, audio, video, text)";
 
 /** Why a non-HTML file must be revealed rather than opened, or null when its app only displays it. */
-function revealReason(p, ext, platform) {
+function revealReason(p, ext, platform, flagsFn) {
   if (RUNNABLE_EXT.has(ext)) return `${ext} files run when opened, so it is shown in its folder instead`;
+  if (MACRO_EXT.has(ext)) return `${ext} documents can carry macros or embedded objects that run as they open, so it is shown in its folder instead`;
   if (!ext) return 'it has no file extension, so it may be a program: shown in its folder instead';
   if (!VIEWABLE_EXT.has(ext)) return `${ext} is ${NOT_LISTED}; shown in its folder instead`;
   // "x.txt:run.pdf" names a hidden stream of another file; its extension says nothing.
@@ -889,13 +920,33 @@ function revealReason(p, ext, platform) {
   if (!VIEWABLE_EXT.has(extOf(real))) {
     return `it leads to ${path.basename(real)}, whose type is ${NOT_LISTED}; shown in its folder instead`;
   }
-  if (platform === 'darwin' && isFinderAlias(p)) {
+  if (platform === 'darwin' && isFinderAlias(p, flagsFn)) {
     return 'it is a Finder alias, which opens its original (possibly a program), so it is shown in its folder instead';
   }
   return null;
 }
 
-/** Only a macOS application bundle launches when "opened": a folder named *.app, or a link to one. */
+/**
+ * Why an HTML file must be revealed rather than opened, or null. The browser is handed the page
+ * itself, but where no browser could be named, the system opens it by type: a link named
+ * page.html that leads to a script, or a Finder alias named so, would then run. So an HTML page
+ * must really be HTML, as an app file must really be of its type.
+ */
+function htmlRevealReason(p, platform, flagsFn) {
+  const real = realOrSelf(p);
+  if (!HTML_EXT.has(extOf(real))) return `it leads to ${path.basename(real)}, which is not an HTML page, so it is shown in its folder instead`;
+  if (platform === 'darwin' && isFinderAlias(p, flagsFn)) {
+    return 'it is a Finder alias, which opens its original (possibly a program), so it is shown in its folder instead';
+  }
+  return null;
+}
+
+/**
+ * Only a macOS application bundle launches when "opened": a folder named *.app, or a link to one.
+ * Any other folder is a folder here: it is served, run or opened as one. The macOS adapter
+ * never hands a folder whose name has a dot to `open` either (other packages: .pkg, .prefPane,
+ * .workflow…): with nothing to select, it reveals it in its parent (`open -R`).
+ */
 const isAppBundle = (dir) => extOf(dir) === '.app' || extOf(realOrSelf(dir)) === '.app';
 
 const hasIndex = (dir) => ['index.html', 'index.htm'].some((name) => {
@@ -972,7 +1023,7 @@ export const entryHref = (entry) => String(entry ?? '').split('/').map(encodeURI
  */
 export function detect(target, {
   platform = process.platform, cwd = process.cwd(), asFolder = false, home = os.homedir(), shortPathFn = shortPathOf,
-  env = process.env,
+  env = process.env, finderFlagsFn = finderFlags,
 } = {}) {
   const raw = String(target ?? '').trim();
   if (!raw) return { ok: false, error: 'no-target', detail: 'Nothing to show: pass a path or a URL.' };
@@ -1037,6 +1088,8 @@ export function detect(target, {
     return { ok: true, mode: 'folder', path: path.dirname(p), select: p, reasons: ['shown in its folder (--folder)'] };
   }
   if (HTML_EXT.has(ext)) {
+    const notHtml = htmlRevealReason(p, platform, finderFlagsFn);
+    if (notHtml) return { ok: true, mode: 'folder', path: path.dirname(p), select: p, reasons: [notHtml] };
     let html = '';
     try {
       // Only the first 2 MB matter for the title and for spotting module/fetch usage.
@@ -1077,7 +1130,7 @@ export function detect(target, {
     }
     return { ok: true, mode: 'serve', path: p, root: path.dirname(p), entry: path.basename(p), reasons, title };
   }
-  const why = revealReason(p, ext, platform);
+  const why = revealReason(p, ext, platform, finderFlagsFn);
   if (why) return { ok: true, mode: 'folder', path: path.dirname(p), select: p, reasons: [why] };
   // Past MAX_PATH, the app is handed the 8.3 short path, as a page is; `path` stays the real one.
   if (platform === 'win32' && p.length > WINDOWS_LONG_PATH) {

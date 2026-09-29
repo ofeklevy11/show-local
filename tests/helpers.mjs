@@ -42,11 +42,29 @@ export function freePort() {
   });
 }
 
-/** A fake runFn: map "cmd arg arg" (or a predicate) to canned results; records every call. */
+// The system programs show-local starts by absolute path (util.mjs winProgram, MAC_PROGRAMS,
+// /bin/sh), and the short names the fakes' tables use for them. cmd.exe and taskkill.exe keep
+// their full path: their tests have always named it.
+const SYSTEM_PROGRAM = /^(?:[A-Za-z]:\\Windows\\(?:System32\\(?:WindowsPowerShell\\v1\.0\\)?)?|\/usr\/s?bin\/|\/bin\/)(powershell\.exe|reg\.exe|netstat\.exe|explorer\.exe|open|osascript|plutil|ps|lsof|xattr|sh)$/i;
+const SHORT_NAME = { 'reg.exe': 'reg', 'netstat.exe': 'netstat' };
+
+/** The short name a fake's table uses for a program show-local starts by absolute path; anything else unchanged. */
+export function programName(cmd) {
+  const m = String(cmd).match(SYSTEM_PROGRAM);
+  if (!m) return cmd;
+  const name = m[1].toLowerCase();
+  return SHORT_NAME[name] || name;
+}
+
+/**
+ * A fake runFn: map "cmd arg arg" (or a predicate) to canned results; records every call.
+ * `cmd` is the program's short name (programName), `path` exactly what show-local ran.
+ */
 export function fakeRun(table = []) {
   const calls = [];
-  const fn = (cmd, args = [], opts = {}) => {
-    calls.push({ cmd, args, opts });
+  const fn = (program, args = [], opts = {}) => {
+    const cmd = programName(program);
+    calls.push({ cmd, path: program, args, opts });
     for (const [match, result] of table) {
       const key = `${cmd} ${args.join(' ')}`;
       const hit = typeof match === 'function' ? match(cmd, args, opts) : key.startsWith(match);

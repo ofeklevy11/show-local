@@ -9,7 +9,7 @@ import path from 'node:path';
 import { lib, tempDir } from './helpers.mjs';
 
 const {
-  detect, entryHref, needsServer, windowsPathKind, HTML_EXT, RUNNABLE_EXT, VIEWABLE_EXT, MAX_SITE_LEVELS,
+  detect, entryHref, needsServer, windowsPathKind, HTML_EXT, MACRO_EXT, RUNNABLE_EXT, VIEWABLE_EXT, MAX_SITE_LEVELS,
 } = await import(lib('detect.mjs'));
 
 const PLATFORMS = ['win32', 'darwin', 'linux'];
@@ -60,7 +60,7 @@ test('VIEWABLE_EXT is exactly the agreed allowlist of documents, images, audio, 
     '.mxf', '.vob', '.f4v', '.dv', '.divx', '.asf', '.m2v',
     '.mp3', '.wav', '.m4a', '.flac', '.ogg', '.oga', '.aac', '.opus', '.wma', '.aiff', '.aif', '.aifc', '.weba', '.amr', '.mid', '.midi', '.mka',
     '.txt', '.md', '.csv', '.tsv', '.json', '.xml', '.log', '.srt', '.vtt',
-    '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp', '.rtf', '.epub', '.xps',
+    '.docx', '.xlsx', '.pptx', '.epub', '.xps',
   ];
   assert.deepEqual([...VIEWABLE_EXT].sort(), [...agreed].sort());
 });
@@ -139,7 +139,7 @@ test('files whose app may run, install, mount or connect them are revealed, neve
       assert.equal(d.select, f, `${ext} ${platform}`);
       assert.equal(d.reasons.length, 1, `${ext} ${platform}`);
       assert.match(d.reasons[0], /shown in its folder instead$/, `${ext} ${platform}`);
-      assert.match(d.reasons[0], RUNNABLE_EXT.has(ext) ? /run when opened/ : /is not on show-local's list of types it opens directly \(documents, images, audio, video, text\); shown in its folder instead$/, ext);
+      assert.match(d.reasons[0], RUNNABLE_EXT.has(ext) ? /run when opened/ : MACRO_EXT.has(ext) ? /can carry macros or embedded objects/ : /is not on show-local's list of types it opens directly \(documents, images, audio, video, text\); shown in its folder instead$/, ext);
     }
   }
   // The extension is compared case-insensitively.

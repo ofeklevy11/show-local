@@ -5,7 +5,7 @@ import { resolveLinuxBrowser, resolveMacBrowser, resolveWindowsBrowser, windowsA
 import { isPortFree, PORT_MAX, PORT_MIN } from './ports.mjs';
 import { listServers } from './registry.mjs';
 import { launchJsonPath } from './launchjson.mjs';
-import { run } from './util.mjs';
+import { MAC_PROGRAMS, run } from './util.mjs';
 import { createWindowsAdapter } from './adapters/win.mjs';
 import { isWaylandSession } from './adapters/linux.mjs';
 
@@ -61,7 +61,7 @@ function macChecks(runFn, env) {
     out.push(check('osascript', 'info', 'AppleScript verification is turned off (SHOW_LOCAL_NO_OSASCRIPT=1), so opens are reported as "cannot verify" and no Automation permission is asked.', 'Unset SHOW_LOCAL_NO_OSASCRIPT to verify opens through AppleScript again.'));
     return out;
   }
-  const osa = runFn('osascript', ['-e', 'return 1']);
+  const osa = runFn(MAC_PROGRAMS.osascript, ['-e', 'return 1']);
   out.push(osa.status === 0
     ? check('osascript', 'ok', 'AppleScript is available. The first verification may ask for Automation permission for your browser and Finder.', 'Set SHOW_LOCAL_NO_OSASCRIPT=1 to skip verification instead.')
     : check('osascript', 'warn', 'osascript is not available; opens will not be verified.'));
@@ -75,7 +75,7 @@ function linuxChecks(runFn, env) {
     ? check('browser', 'ok', `Default browser: ${b.name} (${b.desktopId})`)
     : check('browser', 'warn', b ? `Default browser ${b.desktopId} found, but its .desktop file was not; xdg-open will be used.` : 'xdg-settings did not report a default browser; xdg-open will be used.', 'Run: xdg-settings set default-web-browser <browser>.desktop'));
   const wayland = isWaylandSession(env);
-  const lister = ['wmctrl', 'xdotool'].find((bin) => runFn('sh', ['-c', 'command -v "$0"', bin]).status === 0);
+  const lister = ['wmctrl', 'xdotool'].find((bin) => runFn('/bin/sh', ['-c', 'command -v "$0"', bin]).status === 0);
   out.push(wayland
     ? check('window-titles', 'warn', `Wayland session: native windows hide their titles${lister && env.DISPLAY ? ` (${lister} sees only X11/XWayland windows)` : ''}, so a missing match is reported as "cannot verify", not as a failure. Served pages are still verified through the server log.`)
     : lister
