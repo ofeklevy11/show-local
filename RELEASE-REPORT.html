@@ -36,8 +36,8 @@
 
   <div class="kpis">
     <div class="kpi"><b>17/17</b><span>מקרי קצה-לקצה דרך Claude עצמו (<code>claude -p</code> עם הפלאגין), חלונות אמיתיים</span></div>
-    <div class="kpi"><b>1407/1415</b><span>בדיקות יחידה ב-Windows, Node 24.14.0 (8 מדולגות, הסיבות למטה)</span></div>
-    <div class="kpi"><b>1375/1393</b><span>בדיקות יחידה ב-Linux, בקונטיינר Docker, Node 24.20.0 (18 מדולגות, הסיבות למטה)</span></div>
+    <div class="kpi"><b>1408/1416</b><span>בדיקות יחידה ב-Windows, Node 24.14.0 (8 מדולגות, הסיבות למטה)</span></div>
+    <div class="kpi"><b>1376/1394</b><span>בדיקות יחידה ב-Linux, בקונטיינר Docker, Node 24.20.0 (18 מדולגות, הסיבות למטה)</span></div>
     <div class="kpi"><b>6/6</b><span>בדיקות במסלול אפליקציית הדסקטופ בהרצה החוזרת (ובהרצה הראשונה, על קוד מוקדם יותר: 8/8)</span></div>
   </div>
 
@@ -52,7 +52,7 @@
   <p>בדיקות יחידה שדולגו, ולמה: ב-Windows: 5 — הרשאות וקישורים של POSIX, שאין ב-Windows; 1 — אין ב-Windows סימון הרצה לקובץ; 1 — הבדיקה הייתה נוגעת בתיקיית ה-WSL המקומית; 1 — ב-NTFS נקודתיים בשם קובץ מפרידים זרם נתונים. ב-Linux: 9 — ייעודיות ל-Windows; 5 — מדידות אמיתיות שרצות רק ב-Windows (מעקב החלונות, שמות 8.3, רשימת תהליכי Edge); 3 — אין בקונטיינר netstat, lsof או ss, ולכן אי אפשר לדעת איזה תהליך מחזיק פורט: בדיקות הבעלות על פורט של stop ושל שרתי פיתוח רצו רק ב-Windows; 1 — בכרך הזה אין שמות קצרים בסגנון 8.3.</p>
 
   <h2>קצה-לקצה: מה ביקשו מ-Claude ומה קרה</h2>
-  <p>ההרצה: <bdi dir="ltr">2026-09-29T10:18:23.157Z</bdi>, המודל: <bdi dir="ltr">sonnet</bdi>.</p>
+  <p>ההרצה: <bdi dir="ltr">2026-09-29T11:01:42.458Z</bdi>, המודל: <bdi dir="ltr">sonnet</bdi>.</p>
   
   <div class="scroll"><table>
     <tr><th>#</th><th>הבקשה</th><th>מצב (בקריאה הראשונה)</th><th>נפתח ב-</th><th>אומת</th><th>ראיה</th><th>בדיקות נוספות</th><th>ms</th><th>קריאות</th><th>תוצאה</th></tr>
@@ -64,32 +64,32 @@
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
         <td class="ev">השרת ענה HTTP 200<br>חלון <bdi dir="ltr">&quot;Example Domain - Google Chrome&quot;</bdi></td>
-        <td class="ev">✓ כותרת החלון מכילה את כותרת הדף, <bdi dir="ltr">&quot;Example Domain&quot;</bdi><br>✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;Example Domain&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1651</td>
+        <td class="ev">✓ כותרת החלון מכילה את כותרת הדף, <bdi dir="ltr">&quot;Example Domain&quot;</bdi><br>✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;Example Domain&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
+        <td class="n">2046</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">2-file</td>
-        <td>תציג לי את הדוח &lt;repo&gt;/tests/e2e/out/fixtures/plain/show-local-e2e-plain-260929100832.html</td>
+        <td>תציג לי את הדוח &lt;repo&gt;/tests/e2e/out/fixtures/plain/show-local-e2e-plain-260929105115.html</td>
         <td>קובץ HTML</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e plain 260929100832 - Google Chrome&quot;</bdi></td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e plain 260929100832&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1414</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e plain 260929105115 - Google Chrome&quot;</bdi></td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e plain 260929105115&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
+        <td class="n">1492</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">3-module</td>
-        <td>תציג לי לוקאלית את &lt;repo&gt;/tests/e2e/out/fixtures/module-app/show-local-e2e-module-260929100832.html</td>
+        <td>תציג לי לוקאלית את &lt;repo&gt;/tests/e2e/out/fixtures/module-app/show-local-e2e-module-260929105115.html</td>
         <td>שרת סטטי</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">השרת ענה HTTP 200<br>חלון <bdi dir="ltr">&quot;show-local e2e module 260929100832 - Google Chrome&quot;</bdi><br>יומן השרת: הדפדפן ביקש <code>/show-local-e2e-module-260929100832.html</code> וקיבל 200</td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e module 260929100832&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ פקודה אחת בחזית (<code>oneshot</code>) הפעילה את השרת, פתחה, אימתה ועצרה אותו (פורט 4400), והפורט היה פנוי אחרי הסשן<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1677</td>
+        <td class="ev">השרת ענה HTTP 200<br>חלון <bdi dir="ltr">&quot;show-local e2e module 260929105115 - Google Chrome&quot;</bdi><br>יומן השרת: הדפדפן ביקש <code>/show-local-e2e-module-260929105115.html</code> וקיבל 200</td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e module 260929105115&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ פקודה אחת בחזית (<code>oneshot</code>) הפעילה את השרת, פתחה, אימתה ועצרה אותו (פורט 4400), והפורט היה פנוי אחרי הסשן<br>הסשן הסתיים בעצמו</td>
+        <td class="n">1883</td>
         <td class="n">2</td>
         <td>עבר</td>
       </tr>
@@ -99,9 +99,9 @@
         <td>שרת סטטי</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">השרת ענה HTTP 200<br>חלון <bdi dir="ltr">&quot;show-local e2e site 260929100832 - Google Chrome&quot;</bdi><br>יומן השרת: הדפדפן ביקש <code>/</code> וקיבל 200</td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e site 260929100832&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ פקודה אחת בחזית (<code>oneshot</code>) הפעילה את השרת, פתחה, אימתה ועצרה אותו (פורט 4400), והפורט היה פנוי אחרי הסשן<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1564</td>
+        <td class="ev">השרת ענה HTTP 200<br>חלון <bdi dir="ltr">&quot;show-local e2e site 260929105115 - Google Chrome&quot;</bdi><br>יומן השרת: הדפדפן ביקש <code>/</code> וקיבל 200</td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e site 260929105115&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ פקודה אחת בחזית (<code>oneshot</code>) הפעילה את השרת, פתחה, אימתה ועצרה אותו (פורט 4400), והפורט היה פנוי אחרי הסשן<br>הסשן הסתיים בעצמו</td>
+        <td class="n">1681</td>
         <td class="n">2</td>
         <td>עבר</td>
       </tr>
@@ -111,45 +111,45 @@
         <td>תיקייה</td>
         <td>סייר הקבצים</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון סייר הקבצים על התיקייה, עם <bdi dir="ltr">show-local-e2e-report-260929100832.html</bdi> מסומן</td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local-e2e-report-260929100832.html&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
-        <td class="n">3008</td>
+        <td class="ev">חלון סייר הקבצים על התיקייה, עם <bdi dir="ltr">show-local-e2e-report-260929105115.html</bdi> מסומן</td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local-e2e-report-260929105115.html&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
+        <td class="n">3425</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">6a-pdf</td>
-        <td>תפתח לי את &lt;repo&gt;/tests/e2e/out/fixtures/apps/show-local-e2e-doc-260929100832.pdf</td>
+        <td>תפתח לי את &lt;repo&gt;/tests/e2e/out/fixtures/apps/show-local-e2e-doc-260929105115.pdf</td>
         <td>תוכנה</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local-e2e-doc-260929100832.pdf - Google Chrome&quot;</bdi></td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local-e2e-doc-260929100832.pdf&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1694</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local-e2e-doc-260929105115.pdf - Google Chrome&quot;</bdi></td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local-e2e-doc-260929105115.pdf&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
+        <td class="n">1755</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">6b-mp4</td>
-        <td>תראה לי את הסרטון &lt;repo&gt;/tests/e2e/out/fixtures/apps/show-local-e2e-clip-260929100832.mp4</td>
+        <td>תראה לי את הסרטון &lt;repo&gt;/tests/e2e/out/fixtures/apps/show-local-e2e-clip-260929105115.mp4</td>
         <td>תוכנה</td>
         <td>VLC</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local-e2e-clip-260929100832.mp4 - VLC media player&quot;</bdi></td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local-e2e-clip-260929100832.mp4&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1933</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local-e2e-clip-260929105115.mp4 - VLC media player&quot;</bdi></td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local-e2e-clip-260929105115.mp4&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
+        <td class="n">2029</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">6c-png</td>
-        <td>תציג לי את התמונה &lt;repo&gt;/tests/e2e/out/fixtures/apps/show-local-e2e-image-260929100832.png</td>
+        <td>תציג לי את התמונה &lt;repo&gt;/tests/e2e/out/fixtures/apps/show-local-e2e-image-260929105115.png</td>
         <td>תוכנה</td>
         <td>Photos (תמונות)</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local-e2e-image-260929100832.png&quot;</bdi></td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local-e2e-image-260929100832.png&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
-        <td class="n">3519</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local-e2e-image-260929105115.png&quot;</bdi></td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local-e2e-image-260929105115.png&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
+        <td class="n">3365</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
@@ -159,45 +159,45 @@
         <td>שרת פיתוח</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">השרת ענה HTTP 200<br>חלון <bdi dir="ltr">&quot;show-local e2e dev app 260929100832 - Google Chrome&quot;</bdi></td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e dev app 260929100832&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ פקודה אחת בחזית (<code>oneshot</code>) הפעילה את השרת, פתחה, אימתה ועצרה אותו (פורט 5199), והפורט היה פנוי אחרי הסשן<br>הסשן הסתיים בעצמו</td>
-        <td class="n">7126</td>
+        <td class="ev">השרת ענה HTTP 200<br>חלון <bdi dir="ltr">&quot;show-local e2e dev app 260929105115 - Google Chrome&quot;</bdi></td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e dev app 260929105115&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ פקודה אחת בחזית (<code>oneshot</code>) הפעילה את השרת, פתחה, אימתה ועצרה אותו (פורט 5199), והפורט היה פנוי אחרי הסשן<br>הסשן הסתיים בעצמו</td>
+        <td class="n">6981</td>
         <td class="n">2</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">8-hebrew</td>
-        <td>תציג לי את &lt;repo&gt;/tests/e2e/out/fixtures/עברית/דוח בדיקה 260929100832.html</td>
+        <td>תציג לי את &lt;repo&gt;/tests/e2e/out/fixtures/עברית/דוח בדיקה 260929105115.html</td>
         <td>קובץ HTML</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e דוח בעברית 260929100832 - Google Chrome&quot;</bdi></td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e דוח בעברית 260929100832&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1816</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e דוח בעברית 260929105115 - Google Chrome&quot;</bdi></td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e דוח בעברית 260929105115&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✗ החלון נעלם אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
+        <td class="n">1872</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">9a-path250</td>
-        <td>תציג לי את &lt;repo&gt;/tests/e2e/out/fixtures/long/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/pad-t/show-local-e2e-path250-260929100832.html</td>
+        <td>תציג לי את &lt;repo&gt;/tests/e2e/out/fixtures/long/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/pad-t/show-local-e2e-path250-260929105115.html</td>
         <td>קובץ HTML</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e path 250 260929100832 - Google Chrome&quot;</bdi></td>
-        <td class="ev">אורך הנתיב: 250 תווים<br>✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e path 250 260929100832&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1426</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e path 250 260929105115 - Google Chrome&quot;</bdi></td>
+        <td class="ev">אורך הנתיב: 250 תווים<br>✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e path 250 260929105115&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
+        <td class="n">1591</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">9b-path270</td>
-        <td>תציג לי את &lt;repo&gt;/tests/e2e/out/fixtures/longer/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/pad-to-exact-length-pad/show-local-e2e-path270-260929100832.html</td>
+        <td>תציג לי את &lt;repo&gt;/tests/e2e/out/fixtures/longer/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/long-segment-for-show-local-e2e/pad-to-exact-length-pad/show-local-e2e-path270-260929105115.html</td>
         <td>קובץ HTML</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e path 270 260929100832 - Google Chrome&quot;</bdi></td>
-        <td class="ev">אורך הנתיב: 270 תווים<br>✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e path 270 260929100832&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ נפתח דרך השם הקצר בתקן 8.3, כקובץ רגיל שממשיך לעבוד גם אחרי הסשן<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1863</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e path 270 260929105115 - Google Chrome&quot;</bdi></td>
+        <td class="ev">אורך הנתיב: 270 תווים<br>✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e path 270 260929105115&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ נפתח דרך השם הקצר בתקן 8.3, כקובץ רגיל שממשיך לעבוד גם אחרי הסשן<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
+        <td class="n">2205</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
@@ -209,55 +209,55 @@
         <td>— אין מה לאמת</td>
         <td class="ev">הכתובת נבדקה לפני הפתיחה ולא ענתה, ולכן לא נפתח דבר</td>
         <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;127.0.0.1:4499&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>הסשן הסתיים בעצמו</td>
-        <td class="n">4765</td>
+        <td class="n">4753</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">11-unverified</td>
-        <td>תציג לי את הדוח &lt;repo&gt;/tests/e2e/out/fixtures/unverified/show-local-e2e-unverified-260929100832.html</td>
+        <td>תציג לי את הדוח &lt;repo&gt;/tests/e2e/out/fixtures/unverified/show-local-e2e-unverified-260929105115.html</td>
         <td>קובץ HTML</td>
         <td>Google Chrome</td>
         <td>✗ לא אומת (כמצופה)</td>
-        <td class="ev">לא הופיע חלון חדש או משתנה עם <bdi dir="ltr">&quot;show-local e2e unverified 260929100832&quot;</bdi> תוך 1 ms</td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e unverified 260929100832&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
-        <td class="n">886</td>
+        <td class="ev">לא הופיע חלון חדש או משתנה עם <bdi dir="ltr">&quot;show-local e2e unverified 260929105115&quot;</bdi> תוך 1 ms</td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e unverified 260929105115&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
+        <td class="n">888</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">12-english</td>
-        <td>open the report &lt;repo&gt;/tests/e2e/out/fixtures/english/show-local-e2e-english-report-260929100832.html in my browser</td>
+        <td>open the report &lt;repo&gt;/tests/e2e/out/fixtures/english/show-local-e2e-english-report-260929105115.html in my browser</td>
         <td>קובץ HTML</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e english report 260929100832 - Google Chrome&quot;</bdi></td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e english report 260929100832&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הבקשה באנגלית, והתשובה נבדקה שהיא באנגלית<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1588</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e english report 260929105115 - Google Chrome&quot;</bdi></td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e english report 260929105115&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הבקשה באנגלית, והתשובה נבדקה שהיא באנגלית<br>הסשן הסתיים בעצמו</td>
+        <td class="n">1605</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">13-badname</td>
-        <td>תציג לי את הדוח &lt;repo&gt;/tests/e2e/out/fixtures/odd ' $ &amp; ; ` % folder/show-local-e2e odd ' $ &amp; ; ` % name 260929100832.html</td>
+        <td>תציג לי את הדוח &lt;repo&gt;/tests/e2e/out/fixtures/odd ' $ &amp; ; ` % folder/show-local-e2e odd ' $ &amp; ; ` % name 260929105115.html</td>
         <td>קובץ HTML</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e odd name 260929100832 - Google Chrome&quot;</bdi></td>
-        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e odd name 260929100832&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1524</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e odd name 260929105115 - Google Chrome&quot;</bdi></td>
+        <td class="ev">✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e odd name 260929105115&quot;</bdi>. תהליכי msedge: 16 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
+        <td class="n">1562</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
       <tr class="">
         <td class="n">14-session-temp</td>
-        <td>תציג לי את הדוח &lt;session-temp&gt;/show-local-e2e/p/show-local-e2e-session-260929100832.html</td>
+        <td>תציג לי את הדוח &lt;session-temp&gt;/show-local-e2e/p/show-local-e2e-session-260929105115.html</td>
         <td>קובץ HTML</td>
         <td>Google Chrome</td>
         <td>✓ ודאות גבוהה</td>
-        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e session temp 260929100832 - Google Chrome&quot;</bdi></td>
-        <td class="ev">אורך הנתיב: 297 תווים<br>✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e session temp 260929100832&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 16 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-0 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ נפתח דרך השם הקצר בתקן 8.3, כקובץ רגיל שממשיך לעבוד גם אחרי הסשן<br>✓ החלון עדיין היה פתוח אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
-        <td class="n">1906</td>
+        <td class="ev">חלון <bdi dir="ltr">&quot;show-local e2e session temp 260929105115 - Google Chrome&quot;</bdi></td>
+        <td class="ev">אורך הנתיב: 297 תווים<br>✓ Edge: אף חלון Edge לא הציג את <bdi dir="ltr">&quot;show-local e2e session temp 260929105115&quot;</bdi>. תהליכי msedge: 17 לפני המקרה, 17 אחריו. מהם תהליכי דפדפן חדשים: 0, עם הקובץ בשורת הפקודה: 0, ו-1 תהליכי-משנה חדשים של Edge עצמו (עבודת רקע שלו, בלי הקובץ בשורת הפקודה)<br>✓ נפתח דרך השם הקצר בתקן 8.3, כקובץ רגיל שממשיך לעבוד גם אחרי הסשן<br>✗ החלון נעלם אחרי שהסשן נסגר<br>הסשן הסתיים בעצמו</td>
+        <td class="n">2449</td>
         <td class="n">1</td>
         <td>עבר</td>
       </tr>
