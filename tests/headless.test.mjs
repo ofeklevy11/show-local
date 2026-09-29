@@ -137,7 +137,7 @@ function getAdapter({ win = { matched: false, reason: 'no window (test adapter)'
     calls,
     resolveBrowser: () => ({ name: 'Test GET', process: 'testget' }),
     watchWindows: (args) => { calls.push(['watchWindows', args]); return { ready: Promise.resolve(), result: sleep(Math.min(args.timeoutMs, 800)).then(() => win), cancel() {} }; },
-    async openUrl(url) { calls.push(['openUrl', url]); await browserGet(url); return { ok: true, with: 'Test GET', how: 'an HTTP GET stands in for the browser (test)' }; },
+    async openUrl(url) { calls.push(['openUrl', url]); await sleep(5); await browserGet(url); return { ok: true, with: 'Test GET', how: 'an HTTP GET stands in for the browser (test)' }; },
   };
 }
 
@@ -341,7 +341,7 @@ test('oneshot, measured (static): the real Windows watcher, a GET as the browser
   const port = await freePort();
   const real = adapterFor('win32');
   // The real watcher looks at the real windows; the "browser" is a GET, so nothing opens on screen.
-  const adapter = { ...real, async openUrl(u) { await browserGet(u); return { ok: true, with: 'Test GET', how: 'an HTTP GET stands in for the browser (measurement)' }; } };
+  const adapter = { ...real, async openUrl(u) { await sleep(5); await browserGet(u); return { ok: true, with: 'Test GET', how: 'an HTTP GET stands in for the browser (measurement)' }; } };
   const t0 = Date.now();
   const r = await oneshot(root, { cwd: dir, port, lingerMs: 500, adapter, env: {}, t0 });
   const wall = Date.now() - t0;
@@ -896,7 +896,7 @@ function oneshotInChild(target, opts, vars) {
     'const adapter = {',
     "  resolveBrowser: () => ({ name: 'Test GET', process: 'testget' }),",
     "  watchWindows: (a) => ({ ready: Promise.resolve(), result: new Promise((r) => setTimeout(() => r({ matched: true, confidence: 'high', title: 'test' }), Math.min(a.timeoutMs, 300))), cancel() {} }),",
-    "  async openUrl(url) { await get(url); return { ok: true, with: 'Test GET', how: 'an HTTP GET stands in for the browser (test)' }; },",
+    "  async openUrl(url) { await new Promise((r) => setTimeout(r, 5)); await get(url); return { ok: true, with: 'Test GET', how: 'an HTTP GET stands in for the browser (test)' }; },",
     '};',
     `try { process.stdout.write(JSON.stringify(await oneshot(${JSON.stringify(target)}, { ...${JSON.stringify(opts)}, adapter, env: {} }))); }`,
     'catch (e) { process.stdout.write(JSON.stringify({ threw: e.message })); }',

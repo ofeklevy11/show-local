@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import {
-  chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync,
+  chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, statSync, symlinkSync, writeFileSync,
 } from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
@@ -40,8 +40,7 @@ function put(file, content = 'x') {
 
 /** A temp folder for a served site. Windows may hold a just-served file open for a moment. */
 function siteDir() {
-  const { dir } = tempDir('show-local-srv-');
-  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }) };
+  return tempDir('show-local-srv-');
 }
 
 /** A symlink (a junction for folders on Windows); false when this system does not allow it. */

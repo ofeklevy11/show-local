@@ -46,7 +46,8 @@ function fakeAdapter({ win = { matched: null, reason: 'fake watcher' }, open = {
     watchers,
     only: (fn) => calls.filter((c) => c.fn === fn),
     resolveBrowser() { calls.push({ fn: 'resolveBrowser', args: [] }); return browser; },
-    async openUrl(url, b) { calls.push({ fn: 'openUrl', args: [url, b] }); if (onOpen) await onOpen(url); return open; },
+    // A real browser asks for the page a moment after it is opened, never in the same millisecond.
+    async openUrl(url, b) { calls.push({ fn: 'openUrl', args: [url, b] }); if (onOpen) { await new Promise((r) => setTimeout(r, 5)); await onOpen(url); } return open; },
     async openFolder(dir, sel) { calls.push({ fn: 'openFolder', args: [dir, sel] }); return open; },
     async openApp(file, a) { calls.push({ fn: 'openApp', args: [file, a] }); return open; },
     appFor(file) { calls.push({ fn: 'appFor', args: [file] }); return app; },
