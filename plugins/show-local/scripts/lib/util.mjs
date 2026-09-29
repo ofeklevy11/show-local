@@ -197,6 +197,9 @@ export const TITLE_MAX = 120;
 // tag block (U+E0000–U+E007F, invisible copies of ASCII) and variation selectors, all of which
 // can carry text a reader does not see.
 const BREAKS = /[\p{Cc}\p{Zl}\p{Zp}]/gu;
+// Terminal escape sequences (colours, cursor moves, window titles), removed whole before the
+// escape character itself would become a space and leave "[31m" behind.
+const TERMINAL = /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)|[@-Z\\-_])/g;
 const INVISIBLE = /[\p{Cf}\u{FE00}-\u{FE0F}\u{E0100}-\u{E01EF}]/gu;
 
 /**
@@ -207,7 +210,7 @@ const INVISIBLE = /[\p{Cf}\u{FE00}-\u{FE0F}\u{E0100}-\u{E01EF}]/gu;
  * is data from the page, never instructions. Matching windows still uses the full title.
  */
 export function outputText(s, max = TITLE_MAX) {
-  const clean = String(s ?? '').replace(BREAKS, ' ').replace(INVISIBLE, '').replace(/\s+/g, ' ').trim();
+  const clean = String(s ?? '').replace(TERMINAL, '').replace(BREAKS, ' ').replace(INVISIBLE, '').replace(/\s+/g, ' ').trim();
   const chars = [...clean];
   return chars.length > max ? `${chars.slice(0, max - 1).join('').trimEnd()}…` : clean;
 }

@@ -143,7 +143,9 @@ function Watch-Window {
   if ($preexisting) {
     return [pscustomobject]@{ matched = $null; title = $preexisting.title; process = $preexisting.process; reason = "a window showing this title was already open before, and no new or changed window showed it within $Timeout ms, so this open cannot be told apart from that window"; elapsedMs = $ms }
   }
-  $why = 'no new or changed window containing "' + ($Tokens -join '" or "') + '" appeared within ' + $Timeout + ' ms'
+  # The tokens are page titles, which the page's owner chose: each is quoted at most 60 characters long.
+  $quoted = @($Tokens | ForEach-Object { if ($_.Length -gt 60) { $_.Substring(0, 60) + '...' } else { $_ } })
+  $why = 'no new or changed window containing "' + ($quoted -join '" or "') + '" appeared within ' + $Timeout + ' ms'
   if ($othersChanged) { $why += ' (other windows changed their titles, but none showed it)' }
   return [pscustomobject]@{ matched = $false; reason = $why; elapsedMs = $ms }
 }

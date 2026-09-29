@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { shortPath as shortPathOf } from './shortpath.mjs';
-import { MAC_PROGRAMS, run, titleFromHtml } from './util.mjs';
+import { MAC_PROGRAMS, outputText, run, titleFromHtml } from './util.mjs';
 
 export const HTML_EXT = new Set(['.html', '.htm', '.xhtml']);
 
@@ -365,7 +365,11 @@ function dataNames({ code, values }, { dir, platform, seen, budget }) {
   return out;
 }
 
-const listNames = (names) => (names.length <= 3 ? names.join(', ') : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`);
+// Names read out of a page are the page's text: each is cut short and cleaned (outputText).
+const listNames = (names) => {
+  const shown = names.slice(0, 3).map((n) => outputText(n, 80));
+  return names.length <= 3 ? shown.join(', ') : `${shown.join(', ')} and ${names.length - 3} more`;
+};
 const dataReason = (names, script) => `loads local data (${listNames(names)})${script ? ` in ${script}` : ''} — file:// would block it`;
 
 /**
@@ -901,6 +905,22 @@ function isFinderAlias(p, flagsFn = finderFlags) {
   return flags !== null && (flags & IS_ALIAS) !== 0;
 }
 
+/**
+ * An Office document saved as XML (Word 2003 XML, Flat OPC): the `<?mso-application?>` line
+ * that makes Office's XML handler hand it to Word, Excel or PowerPoint, which can then find
+ * macros in it. Checked in the first 4 KB, in UTF-8 or UTF-16.
+ */
+function isOfficeXml(p) {
+  try {
+    const fd = openSync(p, 'r');
+    try {
+      const b = Buffer.alloc(4096);
+      const n = readSync(fd, b, 0, b.length, 0);
+      return b.subarray(0, n).toString('latin1').replace(/\0/g, '').toLowerCase().includes('<?mso-application');
+    } finally { closeSync(fd); }
+  } catch { return false; }
+}
+
 // Said of a type that is not on the list, which is all that is known about it: never that a
 // video is not a video.
 const NOT_LISTED = "not on show-local's list of types it opens directly (documents, images, audio, video, text)";
@@ -923,6 +943,9 @@ function revealReason(p, ext, platform, flagsFn) {
   if (platform === 'darwin' && isFinderAlias(p, flagsFn)) {
     return 'it is a Finder alias, which opens its original (possibly a program), so it is shown in its folder instead';
   }
+  if (extOf(real) === '.xml' && isOfficeXml(real)) {
+    return 'it is an Office document saved as XML, which can carry macros that run as it opens, so it is shown in its folder instead';
+  }
   return null;
 }
 
@@ -933,6 +956,10 @@ function revealReason(p, ext, platform, flagsFn) {
  * must really be HTML, as an app file must really be of its type.
  */
 function htmlRevealReason(p, platform, flagsFn) {
+  // "tool.cmd:page.html" names a hidden stream of another file; its extension says nothing.
+  if (platform === 'win32' && p.slice(path.parse(p).root.length).includes(':')) {
+    return 'it names an alternate data stream, so it is shown in its folder instead';
+  }
   const real = realOrSelf(p);
   if (!HTML_EXT.has(extOf(real))) return `it leads to ${path.basename(real)}, which is not an HTML page, so it is shown in its folder instead`;
   if (platform === 'darwin' && isFinderAlias(p, flagsFn)) {

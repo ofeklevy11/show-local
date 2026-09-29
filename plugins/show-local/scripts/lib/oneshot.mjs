@@ -14,7 +14,7 @@ import {
 import { claimedPorts, pickPort, rememberedPorts } from './ports.mjs';
 import { entryAlive, entryAt, findServerFor, logFileFor, register, unregister } from './registry.mjs';
 import { createStaticServer, listen } from './server.mjs';
-import { sleep } from './util.mjs';
+import { outputText, sleep } from './util.mjs';
 
 /** How long the server keeps serving after the page opened. */
 export const DEFAULT_LINGER_MS = 3000;
@@ -184,7 +184,7 @@ async function oneshotDev(d, { lingerMs, port: wanted, ...common }) {
   }
   const notes = [...(r.notes || [])];
   // Nothing opened: what the dev server said last is the likeliest explanation.
-  if (!r.opened && tail.trim()) notes.push(`the dev server's last output: ${tail.trim()}`);
+  if (!r.opened && tail.trim()) notes.push(`the dev server's last output: ${outputText(tail, TAIL_CHARS)}`);
   if (!registered) notes.push(UNLISTED_NOTE);
   const stopped = devRun.gone() && await released(port);
   return {

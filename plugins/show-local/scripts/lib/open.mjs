@@ -60,6 +60,9 @@ const PAGE_STATUSES = new Set([200, 206, 304]);
 export const ENTRYPOINT_ENV = 'CLAUDE_CODE_ENTRYPOINT';
 /** What a UTF-8 decoder puts in place of bytes that are not UTF-8. */
 const REPLACEMENT_CHAR = String.fromCharCode(0xfffd);
+/** How much of a watcher's reason, and of a host name from a redirect, reaches the result (see outputText). */
+const REASON_MAX = 600;
+const HOST_MAX = 80;
 /** A path segment longer than this makes a remote address "not plain": it is never fetched. */
 export const PLAIN_SEGMENT_MAX = 32;
 
@@ -193,7 +196,7 @@ async function followRedirects(url, { left, fetchFn }) {
     const r = await fetchFn(current.href, { timeoutMs: Math.max(300, Math.min(1500, left())), ...(publicOnly ? { publicOnly } : {}) });
     const at = { finalUrl: current.href, hops, ...(isLocalHost(current.hostname) ? {} : { remote: true }) };
     if (r?.error === NOT_PUBLIC && led) {
-      return { ...led, why: `it redirected to ${current.host}, which leads to ${r.address || 'an address'} on this computer or a private network; show-local fetches such an address only when it was given that address, or a local host it was given redirected to it`, final: true, notPublic: true };
+      return { ...led, why: `it redirected to ${outputText(current.host, HOST_MAX)}, which leads to ${r.address || 'an address'} on this computer or a private network; show-local fetches such an address only when it is a local host by name (localhost, 127.x.x.x, [::1]) that it was given, or that such a host redirected to`, final: true, notPublic: true };
     }
     if (!r?.ok) return { ok: false, error: r?.error || 'no answer', ...at };
     const answer = { ok: true, status: r.status, body: r.body, headers: r.headers, ...at };
@@ -205,7 +208,7 @@ async function followRedirects(url, { left, fetchFn }) {
     if (!/^https?:$/.test(next.protocol)) return { ...answer, why: `it redirected to a ${next.protocol} address` };
     if (!isLocalHost(next.hostname)) {
       const why = unfetchableReason(next);
-      if (why) return { ...answer, why: `it redirected to ${next.host}, which is not fetched because ${why}`, final: true };
+      if (why) return { ...answer, why: `it redirected to ${outputText(next.host, HOST_MAX)}, which is not fetched because ${why}`, final: true };
     }
     led = answer;
     current = next;
@@ -399,10 +402,10 @@ async function remoteTitle(url, { fetchFn, budgetMs }) {
     if (left <= 0) return { why: `fetching it took longer than ${budgetMs} ms` };
     const r = await fetchFn(current.href, { timeoutMs: left, publicOnly: true });
     if (r?.error === NOT_PUBLIC) {
-      const where = `${current.host} leads to ${r.address || 'an address'} on this computer or a private network, and show-local fetches only public addresses for a title`;
+      const where = `${outputText(current.host, HOST_MAX)} leads to ${r.address || 'an address'} on this computer or a private network, and show-local fetches only public addresses for a title`;
       return { why: hop ? `it redirected to an address that is not fetched: ${where}` : `it was not fetched: ${where}` };
     }
-    if (!r?.ok) return { why: `fetching it failed (${r?.error || 'no answer'})` };
+    if (!r?.ok) return { why: `fetching it failed (${outputText(r?.error || 'no answer', 60)})` };
     const loc = r.headers?.location;
     if (r.status >= 300 && r.status < 400 && loc) {
       let next;
@@ -416,9 +419,9 @@ async function remoteTitle(url, { fetchFn, budgetMs }) {
     if (r.status < 200 || r.status > 299) return { why: `fetching it answered HTTP ${r.status}` };
     const type = String(r.headers?.['content-type'] || '');
     const mime = type.split(';')[0].trim().toLowerCase();
-    if (mime && mime !== 'text/html' && mime !== 'application/xhtml+xml') return { why: `it is not an HTML page (${mime})` };
+    if (mime && mime !== 'text/html' && mime !== 'application/xhtml+xml') return { why: `it is not an HTML page (${outputText(mime, 60)})` };
     const charset = (type.match(/charset\s*=\s*["']?([^"';\s]+)/i) || [])[1];
-    if (charset && !/^(utf-?8|us-ascii)$/i.test(charset)) return { why: `its character set (${charset}) is not read` };
+    if (charset && !/^(utf-?8|us-ascii)$/i.test(charset)) return { why: `its character set (${outputText(charset, 40)}) is not read` };
     const title = titleFromHtml(r.body || '');
     if (!title) return { why: 'the page has no <title>' };
     if (title.includes(REPLACEMENT_CHAR)) return { why: 'its title could not be decoded as UTF-8' };
@@ -437,21 +440,27 @@ const isProof = (r) => r?.matched === true && r.confidence === 'high';
 /** One line of evidence for a watcher result. `withReason: false` leaves out a proof's own reason. */
 const describe = (r, { withReason = true } = {}) => {
   if (!isProof(r)) {
-    const why = r.reason || (r.matched === true ? 'the window watcher reported a match without confidence, which is not proof' : 'the window watcher gave no reason');
+    const why = outputText(r.reason || (r.matched === true ? 'the window watcher reported a match without confidence, which is not proof' : 'the window watcher gave no reason'), REASON_MAX);
     return r.title ? `${why} (window "${outputText(r.title)}")` : why;
   }
   if (r.title) return `window "${outputText(r.title)}"${r.process ? ` (${outputText(r.process, 60)})` : ''}`;
   const sel = r.selected?.length ? `, selected: ${r.selected.map((s) => path.basename(s)).join(', ')}` : '';
   const reused = r.reusedWindow ? ' (a window already on this folder, which now has the file selected)' : '';
-  return `file manager window on ${r.path}${sel}${reused}${withReason && r.reason ? ` — ${r.reason}` : ''}`;
+  return `file manager window on ${r.path}${sel}${reused}${withReason && r.reason ? ` — ${outputText(r.reason, REASON_MAX)}` : ''}`;
 };
 
 /**
  * A watcher result as it appears in show-local's output: its title and process name are the
- * page's or the app's own text, so they pass through outputText (matching used the full text).
+ * page's or the app's own text, and its reason may quote them, so all three pass through
+ * outputText (matching used the full text).
  */
 const forOutput = (r) => (r && typeof r === 'object'
-  ? { ...r, ...(r.title != null ? { title: outputText(r.title) } : {}), ...(r.process != null ? { process: outputText(r.process, 60) } : {}) }
+  ? {
+    ...r,
+    ...(r.title != null ? { title: outputText(r.title) } : {}),
+    ...(r.process != null ? { process: outputText(r.process, 60) } : {}),
+    ...(r.reason != null ? { reason: outputText(r.reason, REASON_MAX) } : {}),
+  }
   : r);
 
 /**
@@ -801,7 +810,7 @@ async function showTarget(target, opts) {
         // and program name; a full command line can carry another tool's secrets.
         return {
           ok: false, ...base, opened: false, error: 'port-busy', url,
-          owner: { pid: stranger.pid, name: stranger.info?.name || null },
+          owner: { pid: stranger.pid, name: stranger.info?.name ? outputText(stranger.info.name, 60) : null },
           detail: `Port ${d.port} is already in use, but that process could not be tied to ${d.root}. If it is this project's dev server, open ${url} directly; otherwise stop it first.`,
           ms: Date.now() - t0,
         };
