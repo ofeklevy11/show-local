@@ -8,7 +8,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { freePort, lib, tempDir } from './helpers.mjs';
 
@@ -173,6 +173,35 @@ const isSymlinkDenied = (e) => ['EPERM', 'EACCES', 'ENOSYS', 'ENOTSUP', 'EINVAL'
 // ---------------------------------------------------------------------------------------------
 // Exports: SERVER_HEADER, rootTag, mimeOf
 // ---------------------------------------------------------------------------------------------
+
+test('a client that leaves mid-file does not keep the file open: its folder can be deleted at once', async () => {
+  const { dir, cleanup } = tempDir();
+  let server;
+  try {
+    const root = path.join(dir, 'site');
+    mkdirSync(root);
+    writeFileSync(path.join(root, 'big.bin'), Buffer.alloc(8 * 1024 * 1024, 7));
+    const port = await freePort();
+    server = createStaticServer({ root, port, echo: false });
+    await listen(server, port);
+    // Read the first bytes of an 8 MB file, then drop the connection.
+    await new Promise((resolve, reject) => {
+      const req = http.get({ host: '127.0.0.1', port, path: '/big.bin', agent: false, headers: { host: `127.0.0.1:${port}` } }, (res) => {
+        res.once('data', () => { req.destroy(); resolve(); });
+      });
+      req.on('error', (e) => (e.code === 'ECONNRESET' ? resolve() : reject(e)));
+    });
+    await closeServer(server);
+    server = null;
+    await new Promise((r) => setTimeout(r, 300));
+    // No retries: with the file still open, Windows leaves it pending delete and the folder "not empty".
+    rmSync(root, { recursive: true, force: true });
+    assert.equal(existsSync(root), false);
+  } finally {
+    await closeServer(server);
+    cleanup();
+  }
+});
 
 test('SERVER_HEADER is X-Show-Local', () => {
   assert.equal(SERVER_HEADER, 'X-Show-Local');

@@ -2,6 +2,7 @@
 import http from 'node:http';
 import { appendFileSync, createReadStream, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { pipeline } from 'node:stream';
 import { pathKey, sha1 } from './util.mjs';
 
 export const SERVER_HEADER = 'X-Show-Local';
@@ -185,9 +186,9 @@ export function createStaticServer({ root, port, logFile, platform = process.pla
     res.writeHead(status, headers);
     log(req, status);
     if (req.method === 'HEAD' || st.size === 0) { res.end(); return; }
-    const stream = createReadStream(file, range ? { start: range.start, end: range.end } : {});
-    stream.on('error', () => res.destroy());
-    stream.pipe(res);
+    // pipeline, not pipe: when the client goes away mid-file, pipe leaves the file open until
+    // garbage collection (on Windows that blocks deleting it); pipeline closes both ends.
+    pipeline(createReadStream(file, range ? { start: range.start, end: range.end } : {}), res, (err) => { if (err) res.destroy(); });
     return undefined;
   };
 
