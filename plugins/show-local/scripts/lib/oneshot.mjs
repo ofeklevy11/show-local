@@ -145,7 +145,7 @@ async function oneshotDev(d, { lingerMs, port: wanted, ...common }) {
   const base = { mode: 'dev', target: d.root, ...(d.reasons?.length ? { reasons: d.reasons } : {}) };
   const port = wanted ?? d.port;
   if (!port) {
-    const f = failure(base, 'dev-port-unknown', `Could not tell which port "${d.script}" listens on; pass --port with the port it prints. Nothing was started.${d.portNote ? ` ${d.portNote}.` : ''}`, t0);
+    const f = failure(base, 'dev-port-unknown', `Could not tell which port "${outputText(d.script, 200)}" listens on; pass --port with the port it prints. Nothing was started.${d.portNote ? ` ${d.portNote}.` : ''}`, t0);
     return d.candidates?.length ? { ...f, candidates: d.candidates } : f;
   }
   if (wanted == null) {
@@ -189,7 +189,7 @@ async function oneshotDev(d, { lingerMs, port: wanted, ...common }) {
   const stopped = devRun.gone() && await released(port);
   return {
     ...r, ...base, url,
-    caution: `It ran the project's own code ("${d.script}").`,
+    caution: `It ran the project's own code ("${outputText(d.script, 200)}").`,
     ...(notes.length ? { notes } : {}),
     server: { kind: 'dev', stopped, port, lingerMs: lingered, root: d.root, url },
     totalMs: Date.now() - t0,

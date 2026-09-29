@@ -3,6 +3,7 @@
 // stays exactly as it was. A file that is not strict JSON is never rewritten.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { outputText } from './util.mjs';
 
 /** Minimal strict-JSON scanner that records where every value starts and ends. */
 export function scanJson(text) {
@@ -110,13 +111,13 @@ export function mergeLaunchEntry(text, entry) {
     root = scanJson(text);
     parsed = JSON.parse(text.replace(/^﻿/, ''));
   } catch (e) {
-    return { ok: false, error: 'invalid-json', detail: `launch.json is not strict JSON (${e.message}); left untouched.` };
+    return { ok: false, error: 'invalid-json', detail: `launch.json is not strict JSON (${outputText(e.message, 200)}); left untouched.` };
   }
   if (root.type !== 'object') return { ok: false, error: 'invalid-json', detail: 'launch.json root is not an object; left untouched.' };
   // Duplicate keys are legal JSON but ambiguous (JSON.parse keeps the last one); never guess.
   const keys = root.members.map((m) => m.key);
   const dup = keys.find((k, i) => keys.indexOf(k) !== i);
-  if (dup !== undefined) return { ok: false, error: 'invalid-json', detail: `launch.json has the key "${dup}" twice; left untouched.` };
+  if (dup !== undefined) return { ok: false, error: 'invalid-json', detail: `launch.json has the key "${outputText(dup, 80)}" twice; left untouched.` };
 
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const unit = detectUnit(text);

@@ -661,15 +661,17 @@ async function planServer(d, { cwd, desktop, waitMs, isFree, remembered = [], he
   const runner = `${pm} run dev`;
   const args = (port) => [SHOW_SCRIPT, 'dev-run', d.root, ...(port ? ['--port', String(port)] : [])];
   const start = (port) => `node ${qs(SHOW_SCRIPT)} dev-run ${q(d.root)}${port ? ` --port ${port}` : ''}`;
-  const caution = `Starting it runs the project's own code ("${d.script}"). Only do that when the user wants the site or app running.`;
+  // The dev script is the project's text: whole in server.script, cut in the sentences around it.
+  const script = outputText(d.script, 200);
+  const caution = `Starting it runs the project's own code ("${script}"). Only do that when the user wants the site or app running.`;
   if (!d.port) {
     return {
       ok: false, error: 'dev-port-unknown', caution,
       // The ports the dev script names, when it names several.
       ...(d.candidates?.length ? { candidates: d.candidates } : {}),
       detail: (d.portSource === 'ambiguous'
-        ? `"${d.script}" names several ports (${d.candidates.join(', ')}), so the page's port is unclear.`
-        : `Could not tell which port "${d.script}" listens on.`) + (d.portNote ? ` ${d.portNote}.`.replace(/\.\.$/, '.') : ''),
+        ? `"${script}" names several ports (${d.candidates.join(', ')}), so the page's port is unclear.`
+        : `Could not tell which port "${script}" listens on.`) + (d.portNote ? ` ${d.portNote}.`.replace(/\.\.$/, '.') : ''),
       server: { kind: 'dev', root: d.root, script: d.script, runner, command: 'node', args: args(null) },
       next: { start: start(null), then: `start it, read the address it prints, then run: node ${qs(SHOW_SCRIPT)} '<that address>' --wait ${DEV_WAIT_MS} --dev-root ${q(d.root)}` },
     };

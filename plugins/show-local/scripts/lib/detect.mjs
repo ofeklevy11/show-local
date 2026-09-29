@@ -13,7 +13,7 @@
 //   app    — a document, image, audio, video or text file, opened with its default application
 //            (on Windows, past MAX_PATH through its 8.3 short form, as a file is)
 import {
-  closeSync, existsSync, lstatSync, openSync, readSync, readdirSync, readlinkSync, realpathSync, statSync,
+  closeSync, existsSync, fstatSync, lstatSync, openSync, readSync, readdirSync, readlinkSync, realpathSync, statSync,
 } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -321,7 +321,36 @@ function relativeParts(ref, platform) {
 }
 
 // Folders where macOS and Linux mount network shares on first access.
-const AUTOMOUNT = /^\/(?:net|Network|automount|misc|smb|nfs)(?:\/|$)/;
+const AUTOMOUNT = /^\/(?:System\/Volumes\/Data\/)?(?:net|network|automount|misc|smb|nfs)(?:\/|$)/i;
+
+/**
+ * Does p, or a link on the way to it, lead into an automounted network folder? Each link is
+ * read (never followed) and each spelling is checked before anything looks it up, since a
+ * lookup inside such a folder is what makes the machine connect.
+ */
+function leadsIntoAutomount(p) {
+  let { root } = path.parse(p);
+  let parts = p.slice(root.length).split('/').filter(Boolean);
+  let cur = root;
+  let hops = 0;
+  for (let i = 0; i < parts.length; i++) {
+    const next = path.join(cur, parts[i]);
+    if (AUTOMOUNT.test(next)) return true;
+    let st;
+    try { st = lstatSync(next); } catch { return false; }
+    if (!st.isSymbolicLink()) { cur = next; continue; }
+    if (++hops > 32) return true;
+    let target;
+    try { target = readlinkSync(next); } catch { return true; }
+    const resolved = path.resolve(cur, target);
+    if (AUTOMOUNT.test(resolved)) return true;
+    root = path.parse(resolved).root;
+    parts = [...resolved.slice(root.length).split('/').filter(Boolean), ...parts.slice(i + 1)];
+    cur = root;
+    i = -1;
+  }
+  return false;
+}
 
 /** file is at most MAX_SITE_LEVELS folders above dir's level (the farthest a site root is looked for). */
 function withinSiteReach(dir, file) {
@@ -370,7 +399,7 @@ function dataNames({ code, values }, { dir, platform, seen, budget }) {
     const file = path.resolve(dir, ...parts);
     // A ref that climbs past where a site root could be, or into an automounted network folder
     // (/net and friends on macOS and Linux), is not looked at: a stat there can reach another machine.
-    if (!withinSiteReach(dir, file) || (platform !== 'win32' && AUTOMOUNT.test(file))) continue;
+    if (!withinSiteReach(dir, file) || (platform !== 'win32' && leadsIntoAutomount(file))) continue;
     try {
       if (platform === 'win32' && networkLinkOn(file)) continue;
       if (statSync(file).isFile()) add(name);
@@ -919,62 +948,62 @@ function isFinderAlias(p, flagsFn = finderFlags) {
   return flags !== null && (flags & IS_ALIAS) !== 0;
 }
 
-/**
- * Where the root element of an XML text starts: the first "<" that is not a processing
- * instruction, a comment or the DOCTYPE (with its internal subset). -1 while the text read so
- * far ends inside the prolog. A linear scan with indexOf: no pattern can backtrack on it.
- */
-function rootElementAt(text) {
-  // Where the construct that starts at `from` ends (just past `close`), or -1 when it does not end yet.
-  const past = (close, from) => { const at = text.indexOf(close, from); return at === -1 ? -1 : at + close.length; };
-  let i = 0;
-  for (;;) {
-    const lt = text.indexOf('<', i);
-    if (lt === -1 || lt + 1 >= text.length) return -1;
-    let end;
-    if (text[lt + 1] === '?') end = past('?>', lt + 2);
-    else if (text.startsWith('<!--', lt)) end = past('-->', lt + 4);
-    else if (text[lt + 1] === '!') {
-      const gt = text.indexOf('>', lt);
-      const open = text.indexOf('[', lt);
-      if (open !== -1 && (gt === -1 || open < gt)) {
-        const close = text.indexOf(']', open);
-        end = close === -1 ? -1 : past('>', close);
-      } else end = gt === -1 ? -1 : gt + 1;
-    } else return lt;
-    if (end === -1) return -1; // the construct is not closed yet: read more
-    i = end;
-  }
-}
-
-/** How much of an .xml file's prolog is read for an Office processing instruction. */
-const XML_PROLOG_MAX = 1024 * 1024;
+/** How much of a document is read for signs of Office content (below). */
+const CONTENT_SCAN_MAX = 1024 * 1024;
+const OLE_MAGIC = Buffer.from('d0cf11e0a1b11ae1', 'hex');
 
 /**
- * An Office document saved as XML (Word 2003 XML, Flat OPC): an `<?mso-application?>` line in
- * its prolog makes Office's XML handler hand it to Word, Excel or PowerPoint, which can then
- * find macros in it. The prolog is read up to its root element, in UTF-8 or UTF-16; one that
- * does not end within XML_PROLOG_MAX counts as Office too, since it cannot be ruled out.
+ * The first CONTENT_SCAN_MAX bytes of a file as lower-case text: UTF-16 (by its byte order mark
+ * or its "<" pattern) decoded as such, anything else read byte for byte. { text, bytes, size }.
  */
-function isOfficeXml(p) {
+function contentHead(p) {
   let fd;
   try {
     fd = openSync(p, 'r');
-    const chunk = Buffer.alloc(65536);
-    let text = '';
-    let pos = 0;
-    while (pos < XML_PROLOG_MAX) {
-      const n = readSync(fd, chunk, 0, chunk.length, pos);
-      if (n <= 0) break;
-      pos += n;
-      text += chunk.subarray(0, n).toString('latin1').replace(/\0/g, '').toLowerCase();
-      const pi = text.indexOf('<?mso-');
-      const root = rootElementAt(text);
-      if (pi !== -1 && (root === -1 || pi < root)) return true;
-      if (root !== -1) return false;
+    const buf = Buffer.alloc(CONTENT_SCAN_MAX);
+    let n = 0;
+    for (;;) {
+      const got = readSync(fd, buf, n, buf.length - n, n);
+      if (got <= 0) break;
+      n += got;
+      if (n >= buf.length) break;
     }
-    return pos >= XML_PROLOG_MAX;
-  } catch { return false; } finally { if (fd !== undefined) try { closeSync(fd); } catch { /* already closed */ } }
+    const bytes = buf.subarray(0, n);
+    const le = (bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0x3c && bytes[1] === 0x00);
+    const be = (bytes[0] === 0xfe && bytes[1] === 0xff) || (bytes[0] === 0x00 && bytes[1] === 0x3c);
+    let text;
+    if (le) text = bytes.subarray(0, n - (n % 2)).toString('utf16le');
+    else if (be) text = Buffer.from(bytes.subarray(0, n - (n % 2))).swap16().toString('utf16le');
+    else text = bytes.toString('latin1');
+    return { text: text.toLowerCase(), bytes, size: fstatSync(fd).size };
+  } catch { return null; } finally { if (fd !== undefined) try { closeSync(fd); } catch { /* already closed */ } }
+}
+
+// Documents whose app is Office, which decides by content, not by name.
+const OFFICE_BY_CONTENT = new Set(['.xml', '.docx', '.xlsx', '.pptx', '.csv', '.tsv', '.txt']);
+
+/**
+ * Why a document's content must be revealed whatever its extension says, or null. Office opens
+ * files by what they hold: an old binary Office document (an OLE compound file) or RTF renamed
+ * to .docx, .csv or .pdf is still opened as what it is, macros and embedded objects included.
+ * An .xml file with an `<?mso-application?>` line goes to Word, Excel or PowerPoint through
+ * Office's XML handler. One rule, no parsing: that line anywhere in the first megabyte counts,
+ * and an Office-bound file too big to read that far is revealed rather than guessed about.
+ */
+function contentRevealReason(p, ext) {
+  const head = contentHead(p);
+  if (!head) return null;
+  if (head.bytes.length >= 8 && head.bytes.subarray(0, 8).equals(OLE_MAGIC)) {
+    return 'its content is an old binary Office document, which can carry macros, whatever its name says, so it is shown in its folder instead';
+  }
+  if (/^\s*\{\\rtf/.test(head.text.replace(/^\ufeff|^ï»¿/, ''))) {
+    return 'its content is RTF, which can embed objects that load as it opens, whatever its name says, so it is shown in its folder instead';
+  }
+  if (OFFICE_BY_CONTENT.has(ext)) {
+    if (head.text.includes('<?mso-')) return 'it is an Office document saved as XML, which can carry macros that run as it opens, so it is shown in its folder instead';
+    if (ext === '.xml' && head.size > CONTENT_SCAN_MAX) return 'it is an XML file too large to check for Office content, so it is shown in its folder instead';
+  }
+  return null;
 }
 
 // Said of a type that is not on the list, which is all that is known about it: never that a
@@ -999,10 +1028,7 @@ function revealReason(p, ext, platform, flagsFn) {
   if (platform === 'darwin' && isFinderAlias(p, flagsFn)) {
     return 'it is a Finder alias, which opens its original (possibly a program), so it is shown in its folder instead';
   }
-  if (extOf(real) === '.xml' && isOfficeXml(real)) {
-    return 'it is an Office document saved as XML, which can carry macros that run as it opens, so it is shown in its folder instead';
-  }
-  return null;
+  return contentRevealReason(real, extOf(real));
 }
 
 /**
@@ -1144,6 +1170,10 @@ export function detect(target, {
   if (!existsSync(p)) return { ok: false, error: 'not-found', detail: `No such file or folder: ${p}` };
 
   const st = statSync(p);
+  // A pipe, socket or device is never read (reading a pipe with no writer never returns) nor opened.
+  if (!st.isDirectory() && !st.isFile()) {
+    return { ok: true, mode: 'folder', path: path.dirname(p), select: p, reasons: ['it is not a regular file (a pipe, a socket or a device), so it is shown in its folder instead'] };
+  }
   if (st.isDirectory()) {
     // `open` would launch a bundle, even with --folder: reveal it in its parent instead.
     if (isAppBundle(p)) {
