@@ -1,5 +1,6 @@
 // Shared test helpers. Tests never open real windows: GUI work goes through fakes.
 import { mkdtempSync, rmSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,7 +15,19 @@ export const lib = (name) => new URL(`../plugins/show-local/scripts/lib/${name}`
 /** A fresh temp folder; call the returned cleanup in finally. */
 export function tempDir(prefix = 'show-local-test-') {
   const dir = mkdtempSync(path.join(os.tmpdir(), prefix));
-  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }) };
+  const cleanup = () => {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch (e) {
+      // A server the test just closed may still be finishing a response, with a file open. A
+      // synchronous retry blocks the event loop, so that file could never close, and Node 18 on
+      // Windows cannot delete an open file (newer Node can). So the removal finishes
+      // asynchronously, with retries, while the close happens; the test's own checks are done.
+      if (!['ENOTEMPTY', 'EBUSY', 'EPERM'].includes(e.code)) throw e;
+      rm(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }).catch(() => { /* the OS temp folder keeps it */ });
+    }
+  };
+  return { dir, cleanup };
 }
 
 /** An ephemeral free port outside show-local's 4400–4499 range. */

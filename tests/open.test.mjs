@@ -516,7 +516,8 @@ test('the log proof: only 200, 206 or 304 for the exact path, never an Electron 
     try {
       const logFile = path.join(dir, 'log.txt');
       for (const [status, proof] of [[206, true], [304, true], [301, false], [404, false], [500, false]]) {
-        const adapter = fakeAdapter({ onOpen: async () => { writeFileSync(logFile, `${new Date().toISOString()} GET / ${status} "${chrome}"\n`); } });
+        // Like a real browser, the request comes a moment after the open (never in the same millisecond).
+        const adapter = fakeAdapter({ onOpen: async () => { await new Promise((r) => setTimeout(r, 5)); writeFileSync(logFile, `${new Date().toISOString()} GET / ${status} "${chrome}"\n`); } });
         const r = await show(`http://127.0.0.1:${port}/`, { adapter, timeoutMs: 600, logFile, cwd: ROOT });
         assert.equal(r.verified, proof ? true : null, `${status}: ${JSON.stringify(r.evidence)}`);
       }

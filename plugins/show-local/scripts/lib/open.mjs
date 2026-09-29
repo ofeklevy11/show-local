@@ -260,7 +260,9 @@ async function waitForLogHit(logFile, sinceMs, pathname, timeoutMs) {
   do {
     let text = '';
     try { text = readFileSync(logFile, 'utf8'); } catch { /* not written yet */ }
-    const hit = logHits(text, { sinceMs }).find((h) => PAGE_STATUSES.has(h.status) && safeDecode(h.url.split('?')[0]) === pathname);
+    // Strictly after the open: the log has millisecond times, and a GET in the very millisecond the
+    // open began was made before it (a browser takes far longer than 1 ms to start and ask).
+    const hit = logHits(text, { sinceMs: sinceMs + 1 }).find((h) => PAGE_STATUSES.has(h.status) && safeDecode(h.url.split('?')[0]) === pathname);
     if (hit) return hit;
     await sleep(200);
   } while (Date.now() - start < timeoutMs);
