@@ -1,0 +1,9 @@
+# plan, ledger and proofs from the build: local only
+.plan/
+# test output
+tests/e2e/out/
+node_modules/
+.DS_Store
+Thumbs.db
+# Claude desktop preview config written while testing served mode
+.claude/

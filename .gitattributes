@@ -1,0 +1,7 @@
+# Keep LF everywhere so install.sh and the .mjs shebang work on every clone
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.pdf binary
+*.mp4 binary

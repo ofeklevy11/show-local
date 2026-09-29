@@ -1,0 +1,23 @@
+{
+  "name": "show-local",
+  "owner": {
+    "name": "Ofek Levy",
+    "url": "https://github.com/ofeklevy11"
+  },
+  "metadata": {
+    "description": "Open Claude's results in your real browser, file manager or app, and verify they opened.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "show-local",
+      "description": "Opens pages, local sites, folders and files on your own computer (not inside Claude) and verifies the window actually came up.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Ofek Levy"
+      },
+      "source": "./plugins/show-local",
+      "category": "productivity"
+    }
+  ]
+}

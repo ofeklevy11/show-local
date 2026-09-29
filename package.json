@@ -1,0 +1,20 @@
+{
+  "name": "show-local",
+  "version": "1.0.0",
+  "description": "Claude Code plugin: open results in your real browser, file manager or app, and verify they opened.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "Ofek Levy (https://github.com/ofeklevy11)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ofeklevy11/show-local.git"
+  },
+  "engines": {
+    "node": ">=18.1"
+  },
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "e2e": "node tests/e2e/run-e2e.mjs"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "show-local",
+  "version": "1.0.0",
+  "description": "Opens what Claude made on your own computer, not inside Claude: pages and HTML reports in your real default browser, local sites through a loopback server, folders in your file manager, and other files in their own apps. Then it checks that the window actually came up before saying so.",
+  "author": {
+    "name": "Ofek Levy",
+    "url": "https://github.com/ofeklevy11"
+  },
+  "homepage": "https://github.com/ofeklevy11/show-local",
+  "repository": "https://github.com/ofeklevy11/show-local",
+  "license": "MIT",
+  "keywords": ["preview", "browser", "open", "localhost", "static-server", "file-explorer", "verify", "html", "dev-server"]
+}
