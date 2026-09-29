@@ -94,7 +94,7 @@ async function withHttp(handler, fn) {
 // URL mode against a local server: verdicts, confidence and the server-log proof
 // ---------------------------------------------------------------------------------------------
 
-test('R1 local URL: the window verdict alone maps to verified true/high, false and null; nothing weaker is true', async (t) => {
+test('local URL: the window verdict alone maps to verified true/high, false and null; nothing weaker is true', async (t) => {
   await withSite(async ({ url, port }) => {
     const cases = [
       ['matched, high', { matched: true, confidence: 'high', title: 'Fake Home - Fake Browser', process: 'fakebrowser' }, true, 'high'],
@@ -127,7 +127,7 @@ test('R1 local URL: the window verdict alone maps to verified true/high, false a
   });
 });
 
-test("R1 --log: a browser GET logged just before the open (inside the old 100 ms slack) is not proof", async () => {
+test("--log: a browser GET logged just before the open (inside the old 100 ms slack) is not proof", async () => {
   await withSite(async ({ url, logFile }) => {
     // The watcher's "ready" is the last step before the open: a GET made there lands in the log
     // a few milliseconds before the moment of opening.
@@ -144,7 +144,7 @@ test("R1 --log: a browser GET logged just before the open (inside the old 100 ms
   });
 });
 
-test('R1 local URL without a <title>: no watcher runs (nothing to recognise), verified null with the reason', async () => {
+test('local URL without a <title>: no watcher runs (nothing to recognise), verified null with the reason', async () => {
   await withHttp((q, s) => { s.writeHead(200, { 'content-type': 'text/html' }); s.end('<p>no title here</p>'); }, async (port) => {
     const adapter = fakeAdapter({ win: { matched: true, confidence: 'high', title: 'would be wrong' } });
     const r = await show(`http://127.0.0.1:${port}/`, { adapter, timeoutMs: 300, cwd: ROOT });
@@ -550,7 +550,7 @@ function fakeFetch(pages) {
   return fn;
 }
 
-test('R1 a remote URL with a query is not fetched before opening, and gives verified null with a clear reason', async () => {
+test('a remote URL with a query is not fetched before opening, and gives verified null with a clear reason', async () => {
   await withNoNetwork(async (fetched) => {
     const adapter = fakeAdapter({ win: { matched: true, confidence: 'high', title: 'would be wrong' } });
     const url = 'https://example.com/invite/one-time?token=abc';
@@ -568,7 +568,7 @@ test('R1 a remote URL with a query is not fetched before opening, and gives veri
   });
 });
 
-test('R1 remote addresses that are not plain are never fetched: fragment, user info, long or token-like segments', async (t) => {
+test('remote addresses that are not plain are never fetched: fragment, user info, long or token-like segments', async (t) => {
   const cases = [
     ['https://example.com/#access_token=abc', /it has a fragment/],
     ['https://example.com/?', /it has a query/],
@@ -593,7 +593,7 @@ test('R1 remote addresses that are not plain are never fetched: fragment, user i
   }
 });
 
-test('R1 unfetchableReason: plain addresses pass; queries, fragments, user info, long and token-like segments do not', async () => {
+test('unfetchableReason: plain addresses pass; queries, fragments, user info, long and token-like segments do not', async () => {
   const { unfetchableReason, PLAIN_SEGMENT_MAX } = await import(lib('open.mjs'));
   assert.equal(PLAIN_SEGMENT_MAX, 32);
   for (const url of [
@@ -624,7 +624,7 @@ test('R1 unfetchableReason: plain addresses pass; queries, fragments, user info,
   for (const [url, why] of Object.entries(not)) assert.equal(unfetchableReason(url), why, url);
 });
 
-test('R1 a plain remote URL is fetched once for its title, and the window showing that title is the proof', async () => {
+test('a plain remote URL is fetched once for its title, and the window showing that title is the proof', async () => {
   await withNoNetwork(async (fetched) => {
     const url = 'https://example.com/';
     const fetchFn = fakeFetch({ [url]: { body: '<!doctype html><title>Example   Domain</title>' } });
@@ -644,7 +644,7 @@ test('R1 a plain remote URL is fetched once for its title, and the window showin
   });
 });
 
-test('R1 a plain remote URL whose title never shows up is verified false; a title already open is null', async () => {
+test('a plain remote URL whose title never shows up is verified false; a title already open is null', async () => {
   const url = 'https://example.com/';
   const page = { [url]: { body: '<title>Example Domain</title>' } };
   const miss = await show(url, { adapter: fakeAdapter({ win: { matched: false, reason: 'no new or changed window containing "example domain" appeared within 200 ms (other windows changed their titles, but none showed it)' } }), timeoutMs: 200, cwd: ROOT, fetchFn: fakeFetch(page) });
@@ -656,7 +656,7 @@ test('R1 a plain remote URL whose title never shows up is verified false; a titl
   assert.equal(pre.confidence, null);
 });
 
-test('R1 the title fetch: redirects to plain addresses are followed; anything else leaves the title unknown (null)', async (t) => {
+test('the title fetch: redirects to plain addresses are followed; anything else leaves the title unknown (null)', async (t) => {
   const url = 'https://example.com/';
   await t.test('plain redirect followed, relative Location resolved', async () => {
     const fetchFn = fakeFetch({
@@ -697,7 +697,7 @@ test('R1 the title fetch: redirects to plain addresses are followed; anything el
   }
 });
 
-test('R1 the title fetch fits the 10 s budget of a direct open, with a second left to start the watcher and the browser', async () => {
+test('the title fetch fits the 10 s budget of a direct open, with a second left to start the watcher and the browser', async () => {
   const { REMOTE_TITLE_MS, DEFAULT_TIMEOUT_MS } = await import(lib('open.mjs'));
   assert.ok(REMOTE_TITLE_MS + DEFAULT_TIMEOUT_MS <= 9000, `${REMOTE_TITLE_MS} + ${DEFAULT_TIMEOUT_MS}`);
   // A fetch that never answers is cut off at the budget, and the open still happens.
@@ -710,7 +710,7 @@ test('R1 the title fetch fits the 10 s budget of a direct open, with a second le
   assert.match(r.evidence[0], /fetching it failed \(timeout\)/);
 });
 
-test('R1 no watcher reports a low-confidence match any more: a match is high confidence or it is not a match', () => {
+test('no watcher reports a low-confidence match any more: a match is high confidence or it is not a match', () => {
   const sources = {
     'win/windows.ps1': path.join(ROOT, 'plugins', 'show-local', 'scripts', 'win', 'windows.ps1'),
     'lib/util.mjs': lib('util.mjs'),
@@ -725,7 +725,7 @@ test('R1 no watcher reports a low-confidence match any more: a match is high con
   }
 });
 
-test('R1 --no-verify: a plain remote URL is not fetched either', async () => {
+test('--no-verify: a plain remote URL is not fetched either', async () => {
   const fetchFn = fakeFetch({ 'https://example.com/': { body: '<title>Example Domain</title>' } });
   const adapter = fakeAdapter();
   const r = await show('https://example.com/', { adapter, verify: false, cwd: ROOT, fetchFn });

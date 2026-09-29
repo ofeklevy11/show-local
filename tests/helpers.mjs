@@ -14,7 +14,7 @@ export const lib = (name) => new URL(`../plugins/show-local/scripts/lib/${name}`
 /** A fresh temp folder; call the returned cleanup in finally. */
 export function tempDir(prefix = 'show-local-test-') {
   const dir = mkdtempSync(path.join(os.tmpdir(), prefix));
-  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }) };
 }
 
 /** An ephemeral free port outside show-local's 4400–4499 range. */

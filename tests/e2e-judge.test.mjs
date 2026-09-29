@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const R = await import(pathToFileURL(path.join(REPO, 'tests', 'e2e', 'run-e2e.mjs')).href);
 const SCRATCH = mkdtempSync(path.join(os.tmpdir(), 'show-local-judge-'));
-process.on('exit', () => { try { rmSync(SCRATCH, { recursive: true, force: true }); } catch { /* best effort */ } });
+process.on('exit', () => { try { rmSync(SCRATCH, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); } catch { /* best effort */ } });
 
 // ---------- transcript builders ----------
 const asst = (blocks) => ({ type: 'assistant', message: { content: blocks } });
@@ -335,10 +335,10 @@ test('real: the runner measures an 8.3 short path for a 270-character file and a
       console.log(`# session file: ${f.session.length} chars, short path ${s.short.length} chars in ${msS} ms → ${p.mode}`);
       assert.equal(p.mode, 'file');
     } finally {
-      rmSync(f.sessionRoot, { recursive: true, force: true });
+      rmSync(f.sessionRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   } finally {
-    rmSync(base, { recursive: true, force: true });
+    rmSync(base, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 

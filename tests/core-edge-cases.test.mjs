@@ -40,7 +40,7 @@ function put(file, content = 'x') {
 
 /** A temp folder for a served site. Windows may hold a just-served file open for a moment. */
 function siteDir() {
-  const { dir } = tempDir('show-local-r2-srv-');
+  const { dir } = tempDir('show-local-srv-');
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }) };
 }
 
@@ -99,7 +99,7 @@ function silentServer() {
 
 /** Point the state folder (registry, logs) at a fresh temp folder for the length of fn. */
 async function withState(fn) {
-  const t = tempDir('show-local-r2-state-');
+  const t = tempDir('show-local-state-');
   const vars = { TEMP: t.dir, TMP: t.dir, TMPDIR: t.dir, XDG_RUNTIME_DIR: '' };
   const saved = {};
   for (const [k, v] of Object.entries(vars)) { saved[k] = process.env[k]; process.env[k] = v; }
@@ -142,7 +142,7 @@ function selfSigned(cn = 'localhost') {
 /** Does this volume make 8.3 short names? Only then can /ENV~1 reach .env at all. */
 function shortNamesHere() {
   if (!onWindows) return false;
-  const t = tempDir('show-local-r2-83-');
+  const t = tempDir('show-local-83-');
   try {
     writeFileSync(path.join(t.dir, '.env'), 'x');
     return existsSync(path.join(t.dir, 'ENV~1'));
@@ -310,7 +310,7 @@ test('httpRequest: the byte cap stops an endless body long before the deadline',
 // util.stateDir
 
 test('stateDir: an unusable XDG_RUNTIME_DIR falls back instead of failing', () => {
-  const { dir, cleanup } = tempDir('show-local-r2-state-');
+  const { dir, cleanup } = tempDir('show-local-state-');
   try {
     const blocker = put(path.join(dir, 'not-a-folder'));
     const opts = { platform: 'linux', tmpdir: path.join(dir, 'tmp'), home: path.join(dir, 'home'), uid: UID };
@@ -325,7 +325,7 @@ test('stateDir: an unusable XDG_RUNTIME_DIR falls back instead of failing', () =
 });
 
 test('stateDir: a file squatting on the temp folder sends it to ~/.cache/show-local', () => {
-  const { dir, cleanup } = tempDir('show-local-r2-state-');
+  const { dir, cleanup } = tempDir('show-local-state-');
   try {
     put(path.join(dir, 'tmp', STATE_NAME), 'squatter');
     const got = stateDir({ platform: 'linux', env: {}, tmpdir: path.join(dir, 'tmp'), home: path.join(dir, 'home'), uid: UID });
@@ -335,7 +335,7 @@ test('stateDir: a file squatting on the temp folder sends it to ~/.cache/show-lo
 });
 
 test('stateDir: with every candidate unusable, a fresh private folder, the same one each call', () => {
-  const { dir, cleanup } = tempDir('show-local-r2-state-');
+  const { dir, cleanup } = tempDir('show-local-state-');
   try {
     const tmp = path.join(dir, 'tmp');
     put(path.join(tmp, STATE_NAME), 'squatter');
@@ -352,7 +352,7 @@ test('stateDir: with every candidate unusable, a fresh private folder, the same 
 });
 
 test('stateDir: a symlink planted at /tmp/show-local-<uid> is refused, not followed', { skip: !posix && 'POSIX ownership and symlinks' }, () => {
-  const { dir, cleanup } = tempDir('show-local-r2-state-');
+  const { dir, cleanup } = tempDir('show-local-state-');
   try {
     const tmp = path.join(dir, 'tmp');
     const victim = path.join(dir, 'victim-private');
@@ -366,7 +366,7 @@ test('stateDir: a symlink planted at /tmp/show-local-<uid> is refused, not follo
 });
 
 test('stateDir: an existing ~/.cache/show-local open to others is closed to 0700 before use', { skip: !posix && 'POSIX modes' }, () => {
-  const { dir, cleanup } = tempDir('show-local-r2-state-');
+  const { dir, cleanup } = tempDir('show-local-state-');
   try {
     const tmp = path.join(dir, 'tmp');
     put(path.join(tmp, STATE_NAME), 'squatter');
@@ -380,7 +380,7 @@ test('stateDir: an existing ~/.cache/show-local open to others is closed to 0700
 });
 
 test('stateDir: a folder others can write is never used, not even after a chmod', { skip: !posix && 'POSIX modes' }, () => {
-  const { dir, cleanup } = tempDir('show-local-r2-state-');
+  const { dir, cleanup } = tempDir('show-local-state-');
   try {
     const tmp = path.join(dir, 'tmp');
     const open = path.join(tmp, STATE_NAME);
@@ -524,7 +524,7 @@ const exp = (hwnd, p, selected = []) => ({ hwnd, path: p, selected });
 const T = 300; // ms: cases that must run into the timeout
 
 const CASES = {
-  // R1: with no title known in advance there is nothing to recognise the page by: matched:null
+  // with no title known in advance there is nothing to recognise the page by: matched:null
   // at once, whatever the browser's windows do (they used to give a low-confidence "match").
   reopen: { mode: 'window', tokens: [], procs: ['chrome'], timeout: T, before: [win(1, 'org/repo - GitHub - Google Chrome')], polls: [[win(1, 'org/repo - GitHub - Google Chrome')]] },
   flicker: { mode: 'window', tokens: [], procs: ['chrome'], timeout: T, before: [win(1, 'Inbox (1) - Mail - Google Chrome')], polls: [[win(1, 'Inbox (2) - Mail - Google Chrome')], [win(1, 'Inbox (1) - Mail - Google Chrome')]] },
@@ -538,12 +538,12 @@ const CASES = {
   newWindowHit: { mode: 'window', tokens: ['my page'], procs: ['chrome'], timeout: 5000, before: [win(1, 'Other - Google Chrome')], polls: [[win(2, 'My Page - Google Chrome'), win(1, 'Other - Google Chrome')]] },
   // Tokens arrive normalised from the main block; the function normalises them again.
   rawToken: { mode: 'window', tokens: ['  My   Page '], procs: ['chrome'], timeout: 5000, before: [win(1, 'Other - Google Chrome')], polls: [[win(1, 'my page - Google Chrome')]] },
-  // R1: an unrelated window changing its title (an unread counter) never verifies anything.
+  // an unrelated window changing its title (an unread counter) never verifies anything.
   unrelatedChange: { mode: 'window', tokens: ['my page'], procs: ['chrome'], timeout: T, before: [win(1, 'Inbox (1) - Mail - Google Chrome')], polls: [[win(1, 'Inbox (2) - Mail - Google Chrome')]] },
   unrelatedNewWindow: { mode: 'window', tokens: ['my page'], procs: ['chrome'], timeout: T, before: [], polls: [[win(7, 'New Tab - Google Chrome')], [win(7, 'Pixel Forge - Google Chrome')]] },
   // Another program's windows do not count, even with the right title.
   otherProgram: { mode: 'window', tokens: ['my page'], procs: ['chrome'], timeout: T, before: [], polls: [[win(5, 'My Page - Mozilla Firefox', 'firefox')]] },
-  // R1: a window that already showed the title before the open cannot be told apart: null.
+  // a window that already showed the title before the open cannot be told apart: null.
   sameTitleBefore: { mode: 'window', tokens: ['my page'], procs: ['chrome'], timeout: T, before: [win(1, 'My Page - Google Chrome')], polls: [[win(1, 'My Page - Google Chrome')]] },
   sameTitleCounter: { mode: 'window', tokens: ['my page'], procs: ['chrome'], timeout: T, before: [win(1, '(1) My Page - Google Chrome')], polls: [[win(1, '(2) My Page - Google Chrome')]] },
   sameTitlePlusUnrelated: { mode: 'window', tokens: ['my page'], procs: ['chrome'], timeout: T, before: [win(1, 'My Page - Google Chrome'), win(2, 'Inbox (1) - Google Chrome')], polls: [[win(1, 'My Page - Google Chrome'), win(2, 'Inbox (2) - Google Chrome')]] },

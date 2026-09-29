@@ -1267,7 +1267,7 @@ test('mac watchWindows reads Safari tab titles through "name of current tab"', a
   assert.ok(!script.includes('title of active tab'));
 });
 
-test('R1 mac watchWindows: a title that was already open gives matched null (cannot tell) after the timeout, never true', async () => {
+test('mac watchWindows: a title that was already open gives matched null (cannot tell) after the timeout, never true', async () => {
   const { adapter } = macAdapter({ titles: [['My Site', 'Other']] });
   const start = Date.now();
   const res = await adapter.watchWindows({ tokens: ['My Site'], timeoutMs: 700 }).result;
@@ -1275,14 +1275,14 @@ test('R1 mac watchWindows: a title that was already open gives matched null (can
   assert.ok(Date.now() - start >= 650, 'waited for the timeout hoping for a new window');
 });
 
-test('R1 mac watchWindows: a counter ticking in the page window that already showed the title is still null', async () => {
+test('mac watchWindows: a counter ticking in the page window that already showed the title is still null', async () => {
   const { adapter } = macAdapter({ titles: [['(1) My Site'], ['(2) My Site']] });
   const res = await adapter.watchWindows({ tokens: ['My Site'], timeoutMs: 700 }).result;
   assert.equal(res.matched, null, JSON.stringify(res));
   assert.match(res.reason, /already open before/);
 });
 
-test('R1 mac watchWindows: a second window with a title that was already open is new: matched true / high', async () => {
+test('mac watchWindows: a second window with a title that was already open is new: matched true / high', async () => {
   const { adapter } = macAdapter({ titles: [['My Site', 'Other'], ['My Site', 'Other', 'My Site']] });
   const res = await adapter.watchWindows({ tokens: ['My Site'], timeoutMs: 3000 }).result;
   assert.equal(res.matched, true, JSON.stringify(res));
@@ -1290,13 +1290,13 @@ test('R1 mac watchWindows: a second window with a title that was already open is
   assert.equal(res.title, 'My Site');
 });
 
-test('R1 mac watchWindows: an unrelated window changing its title never verifies (matched false)', async () => {
+test('mac watchWindows: an unrelated window changing its title never verifies (matched false)', async () => {
   const { adapter } = macAdapter({ titles: [['Inbox (1) - Gmail'], ['Inbox (2) - Gmail'], ['Inbox (3) - Gmail', 'Pixel Forge']] });
   const res = await adapter.watchWindows({ tokens: ['Example Domain'], timeoutMs: 700 }).result;
   assert.deepEqual(res, { matched: false, reason: 'no new window matching the target appeared within 700 ms' });
 });
 
-test('R1 mac watchFolder: a Finder window already on the folder gives matched null, never true', async () => {
+test('mac watchFolder: a Finder window already on the folder gives matched null, never true', async () => {
   const { adapter } = macAdapter({ finder: [['/Users/me/out/']] });
   const res = await adapter.watchFolder({ dir: '/Users/me/out', timeoutMs: 700 }).result;
   assert.equal(res.matched, null, JSON.stringify(res));
@@ -1798,14 +1798,14 @@ test('linux watchWindows: a new matching window title gives matched true / high'
   assert.ok(res.elapsedMs >= 0 && res.elapsedMs < 3000);
 });
 
-test('R1 linux watchWindows: a title already open before gives matched null (cannot tell), never true', async () => {
+test('linux watchWindows: a title already open before gives matched null (cannot tell), never true', async () => {
   const runFn = linuxFake({ frames: [['My Site — Mozilla Firefox']] });
   const a = createLinuxAdapter({ runFn, spawnFn: fakeSpawn(), env: X11 });
   const res = await a.watchWindows({ tokens: ['My Site'], timeoutMs: 700 }).result;
   assert.deepEqual(res, { matched: null, title: 'My Site — Mozilla Firefox', reason: 'a window with this title was already open before, and no new one appeared within 700 ms, so this open cannot be told apart from it' });
 });
 
-test('R1 linux watchWindows: an already-open title wins over the Wayland miss, and is still null', async () => {
+test('linux watchWindows: an already-open title wins over the Wayland miss, and is still null', async () => {
   const runFn = linuxFake({ frames: [['My Site — Mozilla Firefox']] });
   const a = createLinuxAdapter({ runFn, spawnFn: fakeSpawn(), env: { XDG_SESSION_TYPE: 'wayland', DISPLAY: ':0' } });
   const res = await a.watchWindows({ tokens: ['My Site'], timeoutMs: 700 }).result;
@@ -1816,14 +1816,14 @@ test('R1 linux watchWindows: an already-open title wins over the Wayland miss, a
   assert.deepEqual(miss, { matched: null, reason: 'under Wayland only X11 windows are visible, so a native window cannot be confirmed' });
 });
 
-test('R1 linux watchWindows: a counter ticking in the window that already showed the title is still null', async () => {
+test('linux watchWindows: a counter ticking in the window that already showed the title is still null', async () => {
   const runFn = linuxFake({ frames: [['(1) My Site — Mozilla Firefox'], ['(2) My Site — Mozilla Firefox']] });
   const a = createLinuxAdapter({ runFn, spawnFn: fakeSpawn(), env: X11 });
   const res = await a.watchWindows({ tokens: ['My Site'], timeoutMs: 700 }).result;
   assert.equal(res.matched, null, JSON.stringify(res));
 });
 
-test('R1 linux watchWindows: a second window with an already-open title is new: matched true / high', async () => {
+test('linux watchWindows: a second window with an already-open title is new: matched true / high', async () => {
   const runFn = linuxFake({ frames: [['My Site — Mozilla Firefox'], ['My Site — Mozilla Firefox', 'My Site — Mozilla Firefox']] });
   const a = createLinuxAdapter({ runFn, spawnFn: fakeSpawn(), env: X11 });
   const res = await a.watchWindows({ tokens: ['My Site'], timeoutMs: 3000 }).result;
@@ -1831,14 +1831,14 @@ test('R1 linux watchWindows: a second window with an already-open title is new: 
   assert.equal(res.confidence, 'high');
 });
 
-test('R1 linux watchWindows: an unrelated window changing its title never verifies (matched false)', async () => {
+test('linux watchWindows: an unrelated window changing its title never verifies (matched false)', async () => {
   const runFn = linuxFake({ frames: [['Inbox (1) — Mozilla Firefox'], ['Inbox (2) — Mozilla Firefox'], ['Inbox (3) — Mozilla Firefox', 'Pixel Forge — Mozilla Firefox']] });
   const a = createLinuxAdapter({ runFn, spawnFn: fakeSpawn(), env: X11 });
   const res = await a.watchWindows({ tokens: ['Example Domain'], timeoutMs: 700 }).result;
   assert.deepEqual(res, { matched: false, reason: 'no new window matching the target appeared within 700 ms' });
 });
 
-test('R1 linux watchFolder: a file manager window already on the folder gives matched null, never true', async () => {
+test('linux watchFolder: a file manager window already on the folder gives matched null, never true', async () => {
   const runFn = linuxFake({ frames: [['My Site — Files']] });
   const a = createLinuxAdapter({ runFn, spawnFn: fakeSpawn(), env: X11 });
   const res = await a.watchFolder({ dir: '/home/me/My Site', timeoutMs: 700 }).result;

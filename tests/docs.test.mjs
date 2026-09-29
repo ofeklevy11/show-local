@@ -669,7 +669,7 @@ test('decisions: port-busy reports pid and process name only; a remote page that
   const sec = read('SECURITY.md');
   assert.match(sec, /only that process's \*\*pid and process name\*\*/);
   for (const name of ['show', 'show-serve']) assert.match(skill(name), /pid and process name/, name);
-  // R1: only a plain remote address is fetched (once, for its title); anything that could be a
+  // only a plain remote address is fetched (once, for its title); anything that could be a
   // one-time link never is. Where users and Claude read it, both halves are stated.
   assert.match(sec, /never fetches a \*\*remote\*\* page before opening it when the address could be a one-time link/);
   assert.match(sec, /query string or a fragment/);
@@ -683,7 +683,7 @@ test('decisions: port-busy reports pid and process name only; a remote page that
   assert.match(lineOf(skill('show'), /^\| `url`/), /never fetched[\s\S]*`verified: null`/);
 });
 
-test('R1 no reply template routes a weak or low-confidence open to "it seems to have opened"', () => {
+test('no reply template routes a weak or low-confidence open to "it seems to have opened"', () => {
   // verified:true now always means real proof, so no document may keep a "weak proof" branch.
   const docs = {
     'skills/show': skill('show'), 'skills/show-serve': skill('show-serve'), 'skills/show-doctor': skill('show-doctor'),
